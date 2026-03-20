@@ -1,0 +1,906 @@
+openapi: 3.0.3
+info:
+  title: Model Hub Client Inferred Backend API
+  version: 0.1.0-inferred
+  description: |
+    Inferred from frontend behavior. Not backend-confirmed.
+servers:
+  - url: /api/v1
+security:
+  - bearerAuth: []
+tags:
+  - name: Auth
+  - name: Users
+  - name: License
+  - name: DataPlatform
+  - name: Features
+  - name: Portraits
+  - name: Targets
+  - name: Models
+  - name: Scoring
+  - name: Operations
+  - name: SQL
+  - name: Logs
+  - name: Dashboard
+paths:
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthLoginResponse'
+  /auth/current-user:
+    get:
+      tags: [Auth]
+      summary: Get current user
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentUserResponse'
+
+  /users:
+    get:
+      tags: [Users]
+      summary: List users
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - in: query
+          name: role
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+        - in: query
+          name: keyword
+          schema: { type: string }
+      responses:
+        '200':
+          description: paged users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedUsersResponse'
+    post:
+      tags: [Users]
+      summary: Create user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '200':
+          description: created user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /users/{id}:
+    put:
+      tags: [Users]
+      summary: Update user
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: updated user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+    delete:
+      tags: [Users]
+      summary: Delete user
+      parameters:
+        - $ref: '#/components/parameters/UserIdPath'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /license/info:
+    get:
+      tags: [License]
+      summary: Get license info
+      responses:
+        '200':
+          description: license info
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseInfoResponse'
+  /license/activate:
+    post:
+      tags: [License]
+      summary: Activate or update license
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LicenseActivateRequest'
+      responses:
+        '200':
+          description: updated license
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LicenseInfoResponse'
+
+  /data-sources:
+    get:
+      tags: [DataPlatform]
+      summary: List data sources
+      responses:
+        '200':
+          description: list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedDataSourcesResponse'
+    post:
+      tags: [DataPlatform]
+      summary: Create data source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateDataSourceRequest'
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DataSourceResponse'
+
+  /features:
+    get:
+      tags: [Features]
+      summary: List feature sources
+      responses:
+        '200':
+          description: list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedFeatureSourcesResponse'
+    post:
+      tags: [Features]
+      summary: Create feature source
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateFeatureSourceRequest'
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureSourceResponse'
+
+  /portraits:
+    get:
+      tags: [Portraits]
+      summary: List portraits
+      responses:
+        '200':
+          description: list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedPortraitsResponse'
+    post:
+      tags: [Portraits]
+      summary: Create portrait
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreatePortraitRequest'
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortraitResponse'
+
+  /targets:
+    get:
+      tags: [Targets]
+      summary: List targets
+      responses:
+        '200':
+          description: list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedTargetsResponse'
+    post:
+      tags: [Targets]
+      summary: Create target
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTargetRequest'
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TargetResponse'
+
+  /models:
+    get:
+      tags: [Models]
+      summary: List models
+      responses:
+        '200':
+          description: list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedModelsResponse'
+    post:
+      tags: [Models]
+      summary: Create model
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateModelRequest'
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+
+  /models/{id}:
+    get:
+      tags: [Models]
+      summary: Model detail
+      parameters:
+        - $ref: '#/components/parameters/ModelIdPath'
+      responses:
+        '200':
+          description: detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelDetailResponse'
+    delete:
+      tags: [Models]
+      summary: Delete model
+      parameters:
+        - $ref: '#/components/parameters/ModelIdPath'
+      responses:
+        '200':
+          description: success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessResponse'
+
+  /models/{id}/publish:
+    post:
+      tags: [Models]
+      summary: Publish model
+      parameters:
+        - $ref: '#/components/parameters/ModelIdPath'
+      responses:
+        '200':
+          description: published model
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModelResponse'
+
+  /models/{id}/train:
+    post:
+      tags: [Models]
+      summary: Trigger train job
+      parameters:
+        - $ref: '#/components/parameters/ModelIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrainModelRequest'
+      responses:
+        '200':
+          description: job accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+
+  /models/{id}/scoring-lists:
+    get:
+      tags: [Scoring]
+      summary: List scoring lists
+      parameters:
+        - $ref: '#/components/parameters/ModelIdPath'
+      responses:
+        '200':
+          description: list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedScoringListsResponse'
+    post:
+      tags: [Scoring]
+      summary: Create scoring list
+      parameters:
+        - $ref: '#/components/parameters/ModelIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateScoringListRequest'
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScoringListResponse'
+
+  /operations:
+    get:
+      tags: [Operations]
+      summary: List operations
+      responses:
+        '200':
+          description: list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedOperationsResponse'
+    post:
+      tags: [Operations]
+      summary: Create operation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOperationRequest'
+      responses:
+        '200':
+          description: created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationResponse'
+
+  /sql/execute:
+    post:
+      tags: [SQL]
+      summary: Execute SQL
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SqlExecuteRequest'
+      responses:
+        '200':
+          description: sql result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SqlExecuteResponse'
+
+  /logs:
+    get:
+      tags: [Logs]
+      summary: Query logs
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PageSize'
+        - in: query
+          name: type
+          schema: { type: string }
+        - in: query
+          name: user
+          schema: { type: string }
+      responses:
+        '200':
+          description: paged logs
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PagedLogsResponse'
+
+  /dashboard/summary:
+    get:
+      tags: [Dashboard]
+      summary: Dashboard summary
+      responses:
+        '200':
+          description: summary
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardSummaryResponse'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  parameters:
+    Page:
+      in: query
+      name: page
+      schema: { type: integer, minimum: 1, default: 1 }
+    PageSize:
+      in: query
+      name: pageSize
+      schema: { type: integer, minimum: 1, maximum: 200, default: 20 }
+    UserIdPath:
+      in: path
+      name: id
+      required: true
+      schema: { type: string }
+    ModelIdPath:
+      in: path
+      name: id
+      required: true
+      schema: { type: string }
+  schemas:
+    SuccessResponse:
+      type: object
+      properties:
+        success: { type: boolean }
+    Envelope:
+      type: object
+      properties:
+        code: { type: string }
+        message: { type: string }
+        requestId: { type: string }
+    LoginRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    AuthUser:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        role:
+          type: string
+          enum: [model_developer, model_operator, platform_admin]
+        language: { type: string }
+        uiTheme: { type: string }
+    AuthLoginResponse:
+      type: object
+      properties:
+        accessToken: { type: string }
+        user: { $ref: '#/components/schemas/AuthUser' }
+    CurrentUserResponse:
+      type: object
+      properties:
+        user: { $ref: '#/components/schemas/AuthUser' }
+
+    User:
+      type: object
+      properties:
+        id: { type: string }
+        username: { type: string }
+        realName: { type: string }
+        role:
+          type: string
+          enum: [model_developer, model_operator, platform_admin]
+        status: { type: string }
+        createdAt: { type: string, format: date-time }
+    UserResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/User' }
+    PagedUsersResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/User' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreateUserRequest:
+      type: object
+      required: [username, password, role]
+      properties:
+        username: { type: string }
+        realName: { type: string }
+        password: { type: string }
+        role:
+          type: string
+          enum: [model_developer, model_operator, platform_admin]
+    UpdateUserRequest:
+      type: object
+      properties:
+        realName: { type: string }
+        role:
+          type: string
+          enum: [model_developer, model_operator, platform_admin]
+        status: { type: string }
+
+    LicenseInfo:
+      type: object
+      properties:
+        status: { type: string }
+        licenseKeyMasked: { type: string }
+        licensee: { type: string }
+        activatedAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time }
+    LicenseInfoResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/LicenseInfo' }
+    LicenseActivateRequest:
+      type: object
+      required: [licenseKey]
+      properties:
+        licenseKey: { type: string }
+
+    DataSource:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string }
+        connected: { type: boolean }
+        objectCount: { type: integer }
+    DataSourceResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/DataSource' }
+    PagedDataSourcesResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/DataSource' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreateDataSourceRequest:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { type: string }
+        connectionAddress: { type: string }
+
+    FeatureSource:
+      type: object
+      properties:
+        id: { type: string }
+        sourceId: { type: string }
+        sourceName: { type: string }
+        sourceType: { type: string }
+        database: { type: string }
+        tableName: { type: string }
+        tableType: { type: string }
+        customerIdField: { type: string }
+        timeField: { type: string }
+        featureFields:
+          type: array
+          items: { type: string }
+    FeatureSourceResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/FeatureSource' }
+    PagedFeatureSourcesResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/FeatureSource' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreateFeatureSourceRequest:
+      type: object
+      properties:
+        sourceId: { type: string }
+        database: { type: string }
+        tableName: { type: string }
+        tableType: { type: string }
+        customerIdField: { type: string }
+        timeField: { type: string }
+        featureFields:
+          type: array
+          items: { type: string }
+
+    Portrait:
+      type: object
+      properties:
+        id: { type: string }
+        portraitName: { type: string }
+        dataSource: { type: string }
+        sourceTables:
+          type: array
+          items: { type: string }
+        userCount: { type: integer }
+        featureCount: { type: integer }
+        periodCount: { type: integer }
+    PortraitResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/Portrait' }
+    PagedPortraitsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Portrait' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreatePortraitRequest:
+      type: object
+      properties:
+        portraitName: { type: string }
+        dataSource: { type: string }
+        sourceTables:
+          type: array
+          items: { type: string }
+
+    Target:
+      type: object
+      properties:
+        id: { type: string }
+        targetName: { type: string }
+        dataSource: { type: string }
+        targetType: { type: string }
+        description: { type: string }
+        periodCount: { type: integer }
+    TargetResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/Target' }
+    PagedTargetsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Target' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreateTargetRequest:
+      type: object
+      properties:
+        targetName: { type: string }
+        dataSource: { type: string }
+        sourceTables:
+          type: array
+          items: { type: string }
+        targetType: { type: string }
+        description: { type: string }
+
+    Model:
+      type: object
+      properties:
+        id: { type: string }
+        modelName: { type: string }
+        portrait: { type: string }
+        target: { type: string }
+        algorithm: { type: string }
+        auc: { type: number }
+        liftTop10: { type: number }
+        published: { type: boolean }
+    ModelResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/Model' }
+    PagedModelsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Model' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreateModelRequest:
+      type: object
+      properties:
+        modelName: { type: string }
+        portraitId: { type: string }
+        targetId: { type: string }
+        algorithmId: { type: string }
+    ModelFeature:
+      type: object
+      properties:
+        featureName: { type: string }
+        weight: { type: number }
+    ModelDetailResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/Model' }
+        features:
+          type: array
+          items: { $ref: '#/components/schemas/ModelFeature' }
+
+    TrainModelRequest:
+      type: object
+      properties:
+        runMode: { type: string }
+        featureMonths: { type: string }
+        labelMonth: { type: string }
+    JobResponse:
+      type: object
+      properties:
+        jobId: { type: string }
+        status: { type: string }
+
+    ScoringList:
+      type: object
+      properties:
+        id: { type: string }
+        predictionMonth: { type: string }
+        totalCount: { type: integer }
+        status: { type: string }
+    ScoringListResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/ScoringList' }
+    PagedScoringListsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/ScoringList' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreateScoringListRequest:
+      type: object
+      properties:
+        predictionMonth: { type: string }
+
+    OperationCondition:
+      type: object
+      properties:
+        field: { type: string }
+        operator: { type: string }
+        value: { type: string }
+    Operation:
+      type: object
+      properties:
+        id: { type: string }
+        name: { type: string }
+        modelId: { type: string }
+        modelName: { type: string }
+        scoreRule: { type: string }
+        conditionCount: { type: integer }
+        abTest: { type: boolean }
+        status: { type: string }
+    OperationResponse:
+      type: object
+      properties:
+        item: { $ref: '#/components/schemas/Operation' }
+    PagedOperationsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/Operation' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+    CreateOperationRequest:
+      type: object
+      properties:
+        name: { type: string }
+        modelId: { type: string }
+        scoreRule: { type: string }
+        conditions:
+          type: array
+          items: { $ref: '#/components/schemas/OperationCondition' }
+        abTest:
+          type: object
+          properties:
+            enabled: { type: boolean }
+            unit: { type: string }
+            value: { type: integer }
+
+    SqlExecuteRequest:
+      type: object
+      properties:
+        sourceId: { type: string }
+        sql: { type: string }
+    SqlExecuteResponse:
+      type: object
+      properties:
+        columns:
+          type: array
+          items: { type: string }
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        rowCount: { type: integer }
+        durationMs: { type: integer }
+        status: { type: string }
+
+    LogItem:
+      type: object
+      properties:
+        id: { type: string }
+        timestamp: { type: string, format: date-time }
+        type: { type: string }
+        user: { type: string }
+        ip: { type: string }
+        action: { type: string }
+        detail: { type: string }
+        status: { type: string }
+    PagedLogsResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/LogItem' }
+        page: { type: integer }
+        pageSize: { type: integer }
+        total: { type: integer }
+
+    DashboardSummaryResponse:
+      type: object
+      properties:
+        modelStats:
+          type: object
+          additionalProperties: true
+        aucHubs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true

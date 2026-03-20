@@ -1,0 +1,53 @@
+mod config;
+mod db;
+mod errors;
+mod handlers;
+mod middleware;
+mod models;
+mod routes;
+
+use actix_web::{web, App, HttpServer};
+use tracing_actix_web::TracingLogger;
+use tracing_subscriber::EnvFilter;
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    // Logging
+    tracing_subscriber::fmt()
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")))
+        .init();
+
+    let config = config::AppConfig::from_args();
+    let pool = db::init_pool(&config.database_url).await;
+    db::run_migrations(&pool).await;
+
+    // Seed default admin if no users exist
+    seed_admin(&pool).await;
+
+    let bind = format!("{}:{}", config.server_host, config.server_port);
+    tracing::info!("Starting server on {bind}");
+
+    let cfg = web::Data::new(config);
+    let pool = web::Data::new(pool);
+
+    HttpServer::new(move || {
+        App::new()
+            .wrap(TracingLogger::default())
+            .app_data(cfg.clone())
+            .app_data(pool.clone())
+            .configure(routes::configure)
+    })
+    .bind(&bind)?
+    .run()
+    .await
+}
+
+async fn seed_admin(pool: &sqlx::SqlitePool) {
+    use models::user;
+    if let Ok(None) = user::find_by_username(pool, "admin").await {
+        let hash = handlers::auth::hash_password("admin123")
+            .expect("Failed to hash seed password");
+        let _ = user::insert_user(pool, "admin", &hash, Some("Administrator"), "platform_admin").await;
+        tracing::info!("Seeded default admin user (username: admin, password: admin123)");
+    }
+}
