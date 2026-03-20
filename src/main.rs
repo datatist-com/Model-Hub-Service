@@ -4,6 +4,7 @@ mod errors;
 mod handlers;
 mod middleware;
 mod models;
+mod pagination;
 mod routes;
 
 use actix_web::{web, App, HttpServer};

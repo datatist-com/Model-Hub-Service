@@ -16,20 +16,15 @@ pub async fn list(
     query: web::Query<ListUsersQuery>,
 ) -> Result<HttpResponse, AppError> {
     let q = query.into_inner();
-    let page = q.page.unwrap_or(1).max(1);
-    let page_size = q.page_size.unwrap_or(20).clamp(1, 200);
-    let sort_by = q.sort_by.as_deref().unwrap_or("created_at");
-    let sort_order = q.sort_order.as_deref().unwrap_or("desc");
+    let page = q.pagination.page();
+    let page_size = q.pagination.page_size();
 
     let result = user::list_users(
         &pool,
-        page,
-        page_size,
         q.role.as_deref(),
         q.status.as_deref(),
         q.keyword.as_deref(),
-        sort_by,
-        sort_order,
+        &q.pagination,
     )
     .await?;
 

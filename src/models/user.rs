@@ -1,9 +1,12 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
+use crate::pagination::PaginationParams;
+
 // ── Domain structs ──
 
 #[derive(Debug, Clone, sqlx::FromRow)]
+#[allow(dead_code)]
 pub struct User {
     pub id: String,
     pub username: String,
@@ -69,16 +72,11 @@ pub struct UpdateUserRequest {
 
 #[derive(Debug, Deserialize)]
 pub struct ListUsersQuery {
-    pub page: Option<i64>,
-    #[serde(rename = "pageSize")]
-    pub page_size: Option<i64>,
+    #[serde(flatten)]
+    pub pagination: PaginationParams,
     pub role: Option<String>,
     pub status: Option<String>,
     pub keyword: Option<String>,
-    #[serde(rename = "sortBy")]
-    pub sort_by: Option<String>,
-    #[serde(rename = "sortOrder")]
-    pub sort_order: Option<String>,
 }
 
 // ── Validation helpers ──
@@ -123,31 +121,29 @@ pub struct ListResult {
     pub total: i64,
 }
 
+const USER_SORT_COLS: &[(&str, &str)] = &[
+    ("createdAt", "created_at"),
+    ("created_at", "created_at"),
+    ("updatedAt", "updated_at"),
+    ("updated_at", "updated_at"),
+    ("username", "username"),
+    ("role", "role"),
+    ("status", "status"),
+    ("realName", "real_name"),
+    ("real_name", "real_name"),
+];
+
 pub async fn list_users(
     pool: &SqlitePool,
-    page: i64,
-    page_size: i64,
     role: Option<&str>,
     status: Option<&str>,
     keyword: Option<&str>,
-    sort_by: &str,
-    sort_order: &str,
+    pagination: &crate::pagination::PaginationParams,
 ) -> Result<ListResult, sqlx::Error> {
-    // Whitelist sort columns to prevent injection
-    let sort_col = match sort_by {
-        "username" => "username",
-        "role" => "role",
-        "status" => "status",
-        "realName" | "real_name" => "real_name",
-        _ => "created_at",
-    };
-    let order = if sort_order.eq_ignore_ascii_case("asc") {
-        "ASC"
-    } else {
-        "DESC"
-    };
-
-    let offset = (page - 1) * page_size;
+    let sort_col = pagination.safe_sort_col(USER_SORT_COLS, "created_at");
+    let order = pagination.safe_order();
+    let offset = pagination.offset();
+    let page_size = pagination.page_size();
 
     let count_sql = r#"
         SELECT COUNT(*)
