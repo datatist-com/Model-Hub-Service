@@ -63,7 +63,7 @@ async fn seed_admin(pool: &sqlx::SqlitePool) {
         let hash = handlers::auth::hash_password("123456")
             .expect("Failed to hash seed password");
         let _ =
-            user::insert_user(pool, "admin", &hash, Some("默认管理员"), "platform_admin").await;
+            user::insert_user(pool, "admin", &hash, Some("管理员"), "platform_admin").await;
         tracing::info!("Seeded default admin user (username: admin, password: 123456)");
     }
 }

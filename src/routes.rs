@@ -5,6 +5,13 @@ use crate::handlers;
 pub fn configure(cfg: &mut web::ServiceConfig) {
     cfg.service(
         web::scope("/api/v1")
+            // License (no auth required)
+            .service(
+                web::scope("/license")
+                    .route("", web::get().to(handlers::license::info))
+                    .route("/verify", web::post().to(handlers::license::verify))
+                    .route("/activate", web::post().to(handlers::license::activate)),
+            )
             // Auth (no auth required for login)
             .service(
                 web::scope("/auth")

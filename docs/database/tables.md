@@ -199,16 +199,22 @@ Field types are practical guesses (`uuid/string/int/decimal/json/timestamp`). Ba
   - `status`, `rows_returned`, `duration_ms`, `error_message`
   - `executed_by`, `executed_at`
 
-## license_info
-- Purpose: instance-level license state
-- PK: `id` (single-row design possible)
+## licenses
+- Purpose: instance-level license activation history; only one row has `status = 'active'`
+- PK: `id`
 - Fields:
-  - `id`
-  - `license_key_masked`
-  - `licensee`
-  - `status`
-  - `activated_at`, `expires_at`, `updated_at`
-  - optional encrypted full key storage
+  - `id` (string/uuid, required)
+  - `token` (string, the raw license key as submitted)
+  - `project_name` (string — decoded from license payload, UTF-16LE)
+  - `expires_at` (timestamp ISO-8601 UTC — decoded from license payload)
+  - `status` (enum: `active` | `expired` | `replaced`, default `active`)
+  - `activated_at` (timestamp, default now)
+  - `created_at` (timestamp, default now)
+- Indexes: `status`
+- Notes:
+  - On new activation the previous `active` row is set to `replaced`.
+  - License crypto: AES-256-GCM, 12-byte nonce, 25-byte payload, 11-byte tag (embedded key).
+  - Payload: 1-byte version (must be 2) + 4-byte BE u32 epoch + 20-byte UTF-16LE project name.
 
 ## audit_logs
 - Purpose: platform audit and login/operation logs
