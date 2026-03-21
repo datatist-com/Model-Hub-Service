@@ -13,7 +13,7 @@ use crate::models::user::{
 pub async fn list(
     pool: web::Data<SqlitePool>,
     _admin: AdminOnly,
-    query: web::Query<ListUsersQuery>,
+    query: serde_qs::actix::QsQuery<ListUsersQuery>,
 ) -> Result<HttpResponse, AppError> {
     let q = query.into_inner();
     let page = q.pagination.page();
