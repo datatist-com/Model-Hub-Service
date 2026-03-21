@@ -34,23 +34,25 @@ Frontend usage evidence:
 
 ## GET /auth/token
 - Name: Token renewal + current user info
-- Purpose: validate the current token, issue a fresh one (24h expiry reset),
-  and return up-to-date user profile. Clients **must** replace their stored
-  `accessToken` with the one returned. Call this on every app load or
-  periodically to keep the session alive without a separate login.
+- Purpose: validate the current token, extend its DB expiry by 24 h from now,
+  and return up-to-date user profile. The same `accessToken` string is returned
+  (the token itself does not change, only its expiry in the DB is updated).
+  Call this on app load or periodically to keep the session alive.
 - Auth: Yes (any valid token via Authorization / X-Token header or ?token=)
 - Request params: none
 - Response body:
-  - `accessToken: string` — new token with refreshed expiry
+  - `accessToken: string` — same token with refreshed 24 h expiry in DB
   - `user: { id, username, realName, role, language, uiTheme }`
 - Error cases:
-  - expired / invalid token → 401
+  - token not found in DB / already revoked / expired → 401
   - account frozen → 403
   - user not found → 404
 - Priority: Core
 
 ## Notes
+- Tokens are stored in the `tokens` table with IP and device info recorded at
+  login time. Logout marks the token as `revoked` in DB.
 - There is no separate `refresh-token` endpoint. `GET /auth/token` serves both
   the "current user" and "token renewal" purposes in a single call.
-- Token expiry is 24 hours; the frontend should call `GET /auth/token` on
-  startup (or on each page navigation) to silently renew the session.
+- Token expiry is 24 hours from last `GET /auth/token` call; the frontend
+  should call this on startup (or on each page navigation) to silently renew.

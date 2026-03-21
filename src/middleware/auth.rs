@@ -1,111 +1,96 @@
-use actix_web::{dev::Payload, FromRequest, HttpRequest};
-use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation};
-use serde::{Deserialize, Serialize};
-use std::future::{ready, Ready};
+use actix_web::{dev::Payload, web, FromRequest, HttpRequest};
+use std::future::Future;
+use std::pin::Pin;
 
 use crate::errors::AppError;
+use crate::models::token as token_model;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/// Authenticated session context extracted from the token DB.
+#[derive(Debug, Clone)]
 pub struct Claims {
-    pub sub: String,     // user id
+    pub sub: String,       // user id
+    #[allow(dead_code)]
     pub username: String,
     pub role: String,
-    pub exp: usize,      // expiry (unix timestamp)
+    pub token: String,     // raw token string (for revocation / refresh)
 }
 
-impl Claims {
-    pub fn new(user_id: &str, username: &str, role: &str, secret: &str) -> Result<String, AppError> {
-        let exp = chrono::Utc::now()
-            .checked_add_signed(chrono::Duration::hours(24))
-            .expect("valid timestamp")
-            .timestamp() as usize;
-
-        let claims = Self {
-            sub: user_id.to_string(),
-            username: username.to_string(),
-            role: role.to_string(),
-            exp,
-        };
-
-        encode(
-            &Header::default(),
-            &claims,
-            &EncodingKey::from_secret(secret.as_bytes()),
-        )
-        .map_err(|e| AppError::Internal(format!("Token creation failed: {e}")))
+/// Extract the raw token string from the request.
+/// Priority: Authorization header (Bearer or raw) → X-Token header → ?token= query param.
+fn extract_token_str(req: &HttpRequest) -> Result<String, AppError> {
+    // 1. Authorization header
+    if let Some(auth) = req
+        .headers()
+        .get("Authorization")
+        .and_then(|v| v.to_str().ok())
+    {
+        let t = auth.strip_prefix("Bearer ").unwrap_or(auth).to_string();
+        if !t.is_empty() {
+            return Ok(t);
+        }
     }
 
-    pub fn decode(token: &str, secret: &str) -> Result<Self, AppError> {
-        decode::<Self>(
-            token,
-            &DecodingKey::from_secret(secret.as_bytes()),
-            &Validation::default(),
-        )
-        .map(|data| data.claims)
-        .map_err(|e| AppError::Unauthorized(format!("Invalid token: {e}")))
+    // 2. X-Token header
+    if let Some(xt) = req
+        .headers()
+        .get("X-Token")
+        .and_then(|v| v.to_str().ok())
+    {
+        let t = xt.trim().to_string();
+        if !t.is_empty() {
+            return Ok(t);
+        }
     }
+
+    // 3. ?token= query parameter
+    if let Some(t) = req.query_string().split('&').find_map(|pair| {
+        let mut kv = pair.splitn(2, '=');
+        let key = kv.next()?;
+        let val = kv.next()?;
+        if key == "token" && !val.is_empty() {
+            Some(val.to_string())
+        } else {
+            None
+        }
+    }) {
+        return Ok(t);
+    }
+
+    Err(AppError::Unauthorized(
+        "Missing token: provide Authorization header, X-Token header, or ?token= query param"
+            .into(),
+    ))
 }
 
-/// Extractor: pulls Claims from (in priority order):
-///   1. Authorization header — "Bearer <token>" or raw "<token>"
-///   2. X-Token header
-///   3. ?token=<token> query parameter
+/// Extractor: validates token against the DB and returns Claims.
 impl FromRequest for Claims {
     type Error = AppError;
-    type Future = Ready<Result<Self, Self::Error>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
 
     fn from_request(req: &HttpRequest, _payload: &mut Payload) -> Self::Future {
-        let result = (|| {
-            let config = req
-                .app_data::<actix_web::web::Data<crate::config::AppConfig>>()
-                .ok_or_else(|| AppError::Internal("Missing app config".into()))?;
+        let pool = req.app_data::<web::Data<sqlx::SqlitePool>>().cloned();
+        let token_result = extract_token_str(req);
 
-            // 1. Authorization header
-            let token_from_auth = req
-                .headers()
-                .get("Authorization")
-                .and_then(|v| v.to_str().ok())
-                .map(|v| {
-                    if let Some(t) = v.strip_prefix("Bearer ") {
-                        t.to_string()
-                    } else {
-                        v.to_string()
-                    }
-                });
+        Box::pin(async move {
+            let pool =
+                pool.ok_or_else(|| AppError::Internal("Missing DB pool".into()))?;
+            let token_str = token_result?;
 
-            // 2. X-Token header
-            let token_from_x = req
-                .headers()
-                .get("X-Token")
-                .and_then(|v| v.to_str().ok())
-                .map(|v| v.to_string());
+            let info = token_model::find_active(&pool, &token_str)
+                .await?
+                .ok_or_else(|| AppError::Unauthorized("Token is invalid or expired".into()))?;
 
-            // 3. ?token= query parameter
-            let token_from_query = req
-                .query_string()
-                .split('&')
-                .find_map(|pair| {
-                    let mut kv = pair.splitn(2, '=');
-                    let key = kv.next()?;
-                    let val = kv.next()?;
-                    if key == "token" && !val.is_empty() {
-                        Some(val.to_string())
-                    } else {
-                        None
-                    }
-                });
+            if info.user_status != "active" {
+                return Err(AppError::Forbidden("Account is frozen".into()));
+            }
 
-            let token = token_from_auth
-                .or(token_from_x)
-                .or(token_from_query)
-                .ok_or_else(|| AppError::Unauthorized(
-                    "Missing token: provide Authorization header, X-Token header, or ?token= query param".into(),
-                ))?;
-
-            Claims::decode(&token, &config.jwt_secret)
-        })();
-
-        ready(result)
+            Ok(Claims {
+                sub: info.user_id,
+                username: info.username,
+                role: info.role,
+                token: token_str,
+            })
+        })
     }
 }
 
@@ -114,14 +99,17 @@ pub struct AdminOnly(pub Claims);
 
 impl FromRequest for AdminOnly {
     type Error = AppError;
-    type Future = Ready<Result<Self, Self::Error>>;
+    type Future = Pin<Box<dyn Future<Output = Result<Self, Self::Error>>>>;
 
     fn from_request(req: &HttpRequest, payload: &mut Payload) -> Self::Future {
-        let claims_result = Claims::from_request(req, payload).into_inner();
-        ready(match claims_result {
-            Ok(claims) if claims.role == "platform_admin" => Ok(AdminOnly(claims)),
-            Ok(_) => Err(AppError::Forbidden("Admin access required".into())),
-            Err(e) => Err(e),
+        let fut = Claims::from_request(req, payload);
+        Box::pin(async move {
+            match fut.await {
+                Ok(claims) if claims.role == "platform_admin" => Ok(AdminOnly(claims)),
+                Ok(_) => Err(AppError::Forbidden("Admin access required".into())),
+                Err(e) => Err(e),
+            }
         })
     }
 }
+

@@ -1,11 +1,10 @@
-use actix_web::{web, HttpResponse};
+use actix_web::{web, HttpRequest, HttpResponse};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
-use crate::config::AppConfig;
 use crate::errors::{ApiResponse, AppError};
 use crate::middleware::auth::Claims;
-use crate::models::user;
+use crate::models::{token as token_model, user};
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
@@ -34,75 +33,81 @@ pub struct UserInfo {
 
 /// POST /api/v1/auth/login
 pub async fn login(
+    req: HttpRequest,
     pool: web::Data<SqlitePool>,
-    config: web::Data<AppConfig>,
     body: web::Json<LoginRequest>,
 ) -> Result<HttpResponse, AppError> {
-    let req = body.into_inner();
+    let body = body.into_inner();
 
-    if req.username.is_empty() || req.password.is_empty() {
+    if body.username.is_empty() || body.password.is_empty() {
         return Err(AppError::BadRequest("Username and password required".into()));
     }
 
-    let user = user::find_by_username(&pool, &req.username)
+    let db_user = user::find_by_username(&pool, &body.username)
         .await?
         .ok_or_else(|| AppError::Unauthorized("Invalid credentials".into()))?;
 
-    if user.status != "active" {
+    if db_user.status != "active" {
         return Err(AppError::Forbidden("Account is frozen".into()));
     }
 
-    verify_password(&req.password, &user.password_hash)?;
+    verify_password(&body.password, &db_user.password_hash)?;
 
-    let token = Claims::new(&user.id, &user.username, &user.role, &config.jwt_secret)?;
+    let ip = token_model::extract_ip(&req);
+    let device = req
+        .headers()
+        .get("User-Agent")
+        .and_then(|v| v.to_str().ok())
+        .map(token_model::parse_device)
+        .unwrap_or_else(|| "Unknown".into());
+
+    let raw_token = token_model::generate();
+    token_model::create(&pool, &db_user.id, &raw_token, Some(&ip), Some(&device)).await?;
 
     Ok(ApiResponse::ok(LoginData {
-        access_token: token,
+        access_token: raw_token,
         user: UserInfo {
-            id: user.id,
-            username: user.username,
-            real_name: user.real_name,
-            role: user.role,
-            language: user.language,
-            ui_theme: user.ui_theme,
+            id: db_user.id,
+            username: db_user.username,
+            real_name: db_user.real_name,
+            role: db_user.role,
+            language: db_user.language,
+            ui_theme: db_user.ui_theme,
         },
     }))
 }
 
-/// POST /api/v1/auth/logout  (stateless JWT — simply acknowledge)
-pub async fn logout(_claims: Claims) -> Result<HttpResponse, AppError> {
+/// POST /api/v1/auth/logout — revoke the current token in DB.
+pub async fn logout(
+    pool: web::Data<SqlitePool>,
+    claims: Claims,
+) -> Result<HttpResponse, AppError> {
+    token_model::revoke(&pool, &claims.token).await?;
     Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
 }
 
 /// GET /api/v1/auth/token
-/// Validates the current token, refreshes it (new 24h expiry), and returns
-/// updated user info. Clients should replace their stored token with the one
-/// returned here.
+/// Validates the token, extends its expiry by 24 h, and returns updated user info.
+/// The same token string is returned -- clients should persist it to reflect the new expiry.
 pub async fn token_info(
     pool: web::Data<SqlitePool>,
-    config: web::Data<AppConfig>,
     claims: Claims,
 ) -> Result<HttpResponse, AppError> {
-    let user = user::find_by_id(&pool, &claims.sub)
+    token_model::refresh(&pool, &claims.token).await?;
+
+    let db_user = user::find_by_id(&pool, &claims.sub)
         .await?
         .ok_or_else(|| AppError::NotFound("User not found".into()))?;
 
-    if user.status != "active" {
-        return Err(AppError::Forbidden("Account is frozen".into()));
-    }
-
-    // Issue a fresh token so the client's session is automatically extended.
-    let new_token = Claims::new(&user.id, &user.username, &user.role, &config.jwt_secret)?;
-
     Ok(ApiResponse::ok(LoginData {
-        access_token: new_token,
+        access_token: claims.token,
         user: UserInfo {
-            id: user.id,
-            username: user.username,
-            real_name: user.real_name,
-            role: user.role,
-            language: user.language,
-            ui_theme: user.ui_theme,
+            id: db_user.id,
+            username: db_user.username,
+            real_name: db_user.real_name,
+            role: db_user.role,
+            language: db_user.language,
+            ui_theme: db_user.ui_theme,
         },
     }))
 }

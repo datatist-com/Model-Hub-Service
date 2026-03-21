@@ -16,7 +16,24 @@ Field types are practical guesses (`uuid/string/int/decimal/json/timestamp`). Ba
   - `ui_theme` (enum, nullable)
   - `created_at`, `updated_at` (timestamp)
 
-## data_sources
+## tokens
+- Purpose: session tokens — DB-backed auth replacing stateless JWT
+- PK: `id`
+- Fields:
+  - `id` (string/uuid, required)
+  - `user_id` (fk users.id, ON DELETE CASCADE, required)
+  - `token` (string 32 chars alphanumeric, unique, required)
+  - `ip` (string, nullable) — client IP at login time; resolved from
+    X-Forwarded-For / X-Real-IP when direct peer is a private address
+    (10/8, 172.16/12, 192.168/16), otherwise peer socket address
+  - `device` (string, nullable) — OS + Browser parsed from User-Agent
+    e.g. "macOS Chrome", "iPhone Safari", "Windows Edge"
+  - `status` (enum: `active` | `revoked`, default `active`)
+  - `created_at` (timestamp, default now)
+  - `expires_at` (timestamp, required) — set to now+24h on create;
+    extended to now+24h on every `GET /auth/token` call
+- Indexes: `token` (unique lookup), `user_id`
+
 - Purpose: hive/duckdb source registry
 - PK: `id`
 - Fields:

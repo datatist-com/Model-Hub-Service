@@ -1,7 +1,6 @@
 #[derive(Clone)]
 pub struct AppConfig {
     pub database_url: String,
-    pub jwt_secret: String,
     pub server_host: String,
     pub server_port: u16,
 }
@@ -31,28 +30,11 @@ impl AppConfig {
             }
         }
 
-        let jwt_secret = gen_secret();
-        tracing::info!("JWT secret generated (32 chars, alphanumeric)");
-
         Self {
             database_url: "sqlite:model_hub.db?mode=rwc".into(),
-            jwt_secret,
             server_host: host,
             server_port: port,
         }
     }
-}
-
-/// Generate a 32-character alphanumeric random secret using OS entropy (getrandom via uuid).
-fn gen_secret() -> String {
-    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    // Two UUIDs = 32 bytes of OS entropy; map each byte to a charset character.
-    let a = uuid::Uuid::new_v4();
-    let b = uuid::Uuid::new_v4();
-    a.as_bytes()
-        .iter()
-        .chain(b.as_bytes().iter())
-        .map(|&byte| CHARSET[byte as usize % CHARSET.len()] as char)
-        .collect()
 }
 
