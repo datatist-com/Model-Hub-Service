@@ -30,6 +30,14 @@ pub struct UserInfo {
     pub ui_theme: Option<String>,
 }
 
+#[derive(Serialize)]
+pub struct SessionInfo {
+    pub username: String,
+    #[serde(rename = "realName")]
+    pub real_name: Option<String>,
+    pub role: String,
+}
+
 /// POST /api/v1/auth/login
 pub async fn login(
     pool: web::Data<SqlitePool>,
@@ -86,6 +94,22 @@ pub async fn current_user(
         role: user.role,
         language: user.language,
         ui_theme: user.ui_theme,
+    }))
+}
+
+/// GET /api/v1/auth/session
+pub async fn session(
+    pool: web::Data<SqlitePool>,
+    claims: Claims,
+) -> Result<HttpResponse, AppError> {
+    let user = user::find_by_id(&pool, &claims.sub)
+        .await?
+        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
+
+    Ok(ApiResponse::ok(SessionInfo {
+        username: user.username,
+        real_name: user.real_name,
+        role: user.role,
     }))
 }
 
