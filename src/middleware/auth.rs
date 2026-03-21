@@ -46,7 +46,10 @@ impl Claims {
     }
 }
 
-/// Extractor: pulls Claims from the Authorization header.
+/// Extractor: pulls Claims from (in priority order):
+///   1. Authorization header — "Bearer <token>" or raw "<token>"
+///   2. X-Token header
+///   3. ?token=<token> query parameter
 impl FromRequest for Claims {
     type Error = AppError;
     type Future = Ready<Result<Self, Self::Error>>;
@@ -57,20 +60,49 @@ impl FromRequest for Claims {
                 .app_data::<actix_web::web::Data<crate::config::AppConfig>>()
                 .ok_or_else(|| AppError::Internal("Missing app config".into()))?;
 
-            let auth_value = req
+            // 1. Authorization header
+            let token_from_auth = req
                 .headers()
                 .get("Authorization")
                 .and_then(|v| v.to_str().ok())
-                .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".into()))?;
+                .map(|v| {
+                    if let Some(t) = v.strip_prefix("Bearer ") {
+                        t.to_string()
+                    } else {
+                        v.to_string()
+                    }
+                });
 
-            // Accept both "Bearer <token>" and raw "<token>"
-            let token = if let Some(t) = auth_value.strip_prefix("Bearer ") {
-                t
-            } else {
-                auth_value
-            };
+            // 2. X-Token header
+            let token_from_x = req
+                .headers()
+                .get("X-Token")
+                .and_then(|v| v.to_str().ok())
+                .map(|v| v.to_string());
 
-            Claims::decode(token, &config.jwt_secret)
+            // 3. ?token= query parameter
+            let token_from_query = req
+                .query_string()
+                .split('&')
+                .find_map(|pair| {
+                    let mut kv = pair.splitn(2, '=');
+                    let key = kv.next()?;
+                    let val = kv.next()?;
+                    if key == "token" && !val.is_empty() {
+                        Some(val.to_string())
+                    } else {
+                        None
+                    }
+                });
+
+            let token = token_from_auth
+                .or(token_from_x)
+                .or(token_from_query)
+                .ok_or_else(|| AppError::Unauthorized(
+                    "Missing token: provide Authorization header, X-Token header, or ?token= query param".into(),
+                ))?;
+
+            Claims::decode(&token, &config.jwt_secret)
         })();
 
         ready(result)
