@@ -5,3 +5,4 @@
 *.db-shm
 .env
 .DS_Store
+jwt_secret.key

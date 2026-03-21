@@ -31,8 +31,26 @@ impl AppConfig {
             }
         }
 
-        let jwt_secret = uuid::Uuid::new_v4().to_string();
-        tracing::info!("JWT secret auto-generated for this session");
+        // Persist JWT secret across restarts so existing tokens remain valid.
+        // If the file exists, reuse it; otherwise generate once and save.
+        let secret_path = "jwt_secret.key";
+        let jwt_secret = if let Ok(s) = std::fs::read_to_string(secret_path) {
+            let s = s.trim().to_string();
+            if s.is_empty() {
+                let new_secret = uuid::Uuid::new_v4().to_string();
+                std::fs::write(secret_path, &new_secret).ok();
+                new_secret
+            } else {
+                tracing::info!("JWT secret loaded from {secret_path}");
+                s
+            }
+        } else {
+            let new_secret = uuid::Uuid::new_v4().to_string();
+            std::fs::write(secret_path, &new_secret)
+                .expect("Failed to write jwt_secret.key");
+            tracing::info!("JWT secret generated and saved to {secret_path}");
+            new_secret
+        };
 
         Self {
             database_url: "sqlite:model_hub.db?mode=rwc".into(),
