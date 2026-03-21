@@ -8,6 +8,8 @@ mod pagination;
 mod routes;
 
 use actix_web::{web, App, HttpServer};
+use actix_cors::Cors;
+use actix_web::http::header;
 use tracing_actix_web::TracingLogger;
 use tracing_subscriber::EnvFilter;
 
@@ -32,7 +34,14 @@ async fn main() -> std::io::Result<()> {
     let pool = web::Data::new(pool);
 
     HttpServer::new(move || {
+        let cors = Cors::default()
+            .allow_any_origin()
+            .allowed_methods(vec!["GET", "POST", "PUT", "DELETE", "OPTIONS"])
+            .allowed_headers(vec![header::AUTHORIZATION, header::CONTENT_TYPE, header::ACCEPT])
+            .max_age(3600);
+
         App::new()
+            .wrap(cors)
             .wrap(TracingLogger::default())
             .app_data(cfg.clone())
             .app_data(pool.clone())

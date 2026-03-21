@@ -57,15 +57,18 @@ impl FromRequest for Claims {
                 .app_data::<actix_web::web::Data<crate::config::AppConfig>>()
                 .ok_or_else(|| AppError::Internal("Missing app config".into()))?;
 
-            let auth_header = req
+            let auth_value = req
                 .headers()
                 .get("Authorization")
                 .and_then(|v| v.to_str().ok())
                 .ok_or_else(|| AppError::Unauthorized("Missing Authorization header".into()))?;
 
-            let token = auth_header
-                .strip_prefix("Bearer ")
-                .ok_or_else(|| AppError::Unauthorized("Invalid Authorization format".into()))?;
+            // Accept both "Bearer <token>" and raw "<token>"
+            let token = if let Some(t) = auth_value.strip_prefix("Bearer ") {
+                t
+            } else {
+                auth_value
+            };
 
             Claims::decode(token, &config.jwt_secret)
         })();
