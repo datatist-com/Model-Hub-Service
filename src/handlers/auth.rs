@@ -24,18 +24,12 @@ pub struct LoginData {
 pub struct UserInfo {
     pub id: String,
     pub username: String,
+    #[serde(rename = "realName")]
+    pub real_name: Option<String>,
     pub role: String,
     pub language: Option<String>,
     #[serde(rename = "uiTheme")]
     pub ui_theme: Option<String>,
-}
-
-#[derive(Serialize)]
-pub struct SessionInfo {
-    pub username: String,
-    #[serde(rename = "realName")]
-    pub real_name: Option<String>,
-    pub role: String,
 }
 
 /// POST /api/v1/auth/login
@@ -67,6 +61,7 @@ pub async fn login(
         user: UserInfo {
             id: user.id,
             username: user.username,
+            real_name: user.real_name,
             role: user.role,
             language: user.language,
             ui_theme: user.ui_theme,
@@ -79,8 +74,8 @@ pub async fn logout(_claims: Claims) -> Result<HttpResponse, AppError> {
     Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
 }
 
-/// GET /api/v1/auth/current-user
-pub async fn current_user(
+/// GET /api/v1/auth/token
+pub async fn token_info(
     pool: web::Data<SqlitePool>,
     claims: Claims,
 ) -> Result<HttpResponse, AppError> {
@@ -91,25 +86,10 @@ pub async fn current_user(
     Ok(ApiResponse::ok(UserInfo {
         id: user.id,
         username: user.username,
+        real_name: user.real_name,
         role: user.role,
         language: user.language,
         ui_theme: user.ui_theme,
-    }))
-}
-
-/// GET /api/v1/auth/session
-pub async fn session(
-    pool: web::Data<SqlitePool>,
-    claims: Claims,
-) -> Result<HttpResponse, AppError> {
-    let user = user::find_by_id(&pool, &claims.sub)
-        .await?
-        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
-
-    Ok(ApiResponse::ok(SessionInfo {
-        username: user.username,
-        real_name: user.real_name,
-        role: user.role,
     }))
 }
 

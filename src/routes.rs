@@ -10,8 +10,7 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                 web::scope("/auth")
                     .route("/login", web::post().to(handlers::auth::login))
                     .route("/logout", web::post().to(handlers::auth::logout))
-                    .route("/current-user", web::get().to(handlers::auth::current_user))
-                    .route("/session", web::get().to(handlers::auth::session)),
+                    .route("/token", web::get().to(handlers::auth::token_info)),
             )
             // Users management (admin only)
             .service(
