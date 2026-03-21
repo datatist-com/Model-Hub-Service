@@ -37,7 +37,7 @@ impl AppConfig {
         let jwt_secret = if let Ok(s) = std::fs::read_to_string(secret_path) {
             let s = s.trim().to_string();
             if s.is_empty() {
-                let new_secret = uuid::Uuid::new_v4().to_string();
+                let new_secret = gen_secret();
                 std::fs::write(secret_path, &new_secret).ok();
                 new_secret
             } else {
@@ -45,7 +45,7 @@ impl AppConfig {
                 s
             }
         } else {
-            let new_secret = uuid::Uuid::new_v4().to_string();
+            let new_secret = gen_secret();
             std::fs::write(secret_path, &new_secret)
                 .expect("Failed to write jwt_secret.key");
             tracing::info!("JWT secret generated and saved to {secret_path}");
@@ -59,4 +59,45 @@ impl AppConfig {
             server_port: port,
         }
     }
+}
+
+/// Generate a 128-character alphanumeric random secret using OS entropy.
+fn gen_secret() -> String {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    const LEN: usize = 128;
+
+    // Mix multiple entropy sources to build a seed pool.
+    let mut pool: Vec<u8> = Vec::with_capacity(LEN);
+
+    // Source 1: 4 UUIDs (128 bits of entropy each via OS getrandom)
+    for _ in 0..4 {
+        let id = uuid::Uuid::new_v4();
+        pool.extend_from_slice(id.as_bytes());
+    }
+
+    // Source 2: high-resolution current timestamp for extra uniqueness.
+    let ts = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let mut h = DefaultHasher::new();
+    ts.hash(&mut h);
+    let ts_bytes = h.finish().to_le_bytes();
+    pool.extend_from_slice(&ts_bytes);
+
+    // Map each byte into the charset index.
+    pool.iter()
+        .cycle()
+        .take(LEN)
+        .enumerate()
+        .map(|(i, &b)| {
+            // XOR position to avoid repeating patterns when cycling.
+            let idx = (b ^ (i as u8)) as usize % CHARSET.len();
+            CHARSET[idx] as char
+        })
+        .collect()
 }
