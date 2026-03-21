@@ -75,21 +75,35 @@ pub async fn logout(_claims: Claims) -> Result<HttpResponse, AppError> {
 }
 
 /// GET /api/v1/auth/token
+/// Validates the current token, refreshes it (new 24h expiry), and returns
+/// updated user info. Clients should replace their stored token with the one
+/// returned here.
 pub async fn token_info(
     pool: web::Data<SqlitePool>,
+    config: web::Data<AppConfig>,
     claims: Claims,
 ) -> Result<HttpResponse, AppError> {
     let user = user::find_by_id(&pool, &claims.sub)
         .await?
         .ok_or_else(|| AppError::NotFound("User not found".into()))?;
 
-    Ok(ApiResponse::ok(UserInfo {
-        id: user.id,
-        username: user.username,
-        real_name: user.real_name,
-        role: user.role,
-        language: user.language,
-        ui_theme: user.ui_theme,
+    if user.status != "active" {
+        return Err(AppError::Forbidden("Account is frozen".into()));
+    }
+
+    // Issue a fresh token so the client's session is automatically extended.
+    let new_token = Claims::new(&user.id, &user.username, &user.role, &config.jwt_secret)?;
+
+    Ok(ApiResponse::ok(LoginData {
+        access_token: new_token,
+        user: UserInfo {
+            id: user.id,
+            username: user.username,
+            real_name: user.real_name,
+            role: user.role,
+            language: user.language,
+            ui_theme: user.ui_theme,
+        },
     }))
 }
 

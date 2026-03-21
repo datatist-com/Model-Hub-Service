@@ -16,45 +16,41 @@ Frontend usage evidence:
   - `password: string`
 - Response body:
   - `accessToken: string`
-  - `user: { id, username, role, language, uiTheme }`
+  - `user: { id, username, realName, role, language, uiTheme }`
   - `role` enum: `model_developer`, `model_operator`, `platform_admin`
 - Error cases:
   - invalid credentials
   - frozen/disabled account
-- Confidence: Strongly Inferred
 - Priority: Core
 
 ## POST /auth/logout
 - Name: Logout
-- Purpose: invalidate current session
+- Purpose: stateless JWT logout (acknowledge, client discards token)
 - Frontend usage: user menu logout action
 - Auth: Yes
 - Request body: none
 - Response body: `{ success: true }`
-- Confidence: Strongly Inferred
 - Priority: Core
 
-## POST /auth/refresh-token
-- Name: Refresh token
-- Purpose: renew expired access token
-- Frontend usage: implied by token-guarded routing and long-lived UI session
-- Auth: refresh token or valid session cookie
-- Request body: implementation-specific
-- Response body: `{ accessToken: string }`
-- Confidence: Uncertain
-- Priority: Secondary
-
-## GET /auth/current-user
-- Name: Current user info
-- Purpose: load role/preferences for shell initialization
-- Frontend usage: layout init and menu permissions
-- Auth: Yes
+## GET /auth/token
+- Name: Token renewal + current user info
+- Purpose: validate the current token, issue a fresh one (24h expiry reset),
+  and return up-to-date user profile. Clients **must** replace their stored
+  `accessToken` with the one returned. Call this on every app load or
+  periodically to keep the session alive without a separate login.
+- Auth: Yes (any valid token via Authorization / X-Token header or ?token=)
 - Request params: none
 - Response body:
-  - `{ id, username, role, language, uiTheme }`
-- Confidence: Strongly Inferred
+  - `accessToken: string` — new token with refreshed expiry
+  - `user: { id, username, realName, role, language, uiTheme }`
+- Error cases:
+  - expired / invalid token → 401
+  - account frozen → 403
+  - user not found → 404
 - Priority: Core
 
-## Notes and Assumptions
-- Current frontend stores token/client-side session data in auth helpers.
-- Backend should return role and display preferences in login or current-user response to avoid extra calls.
+## Notes
+- There is no separate `refresh-token` endpoint. `GET /auth/token` serves both
+  the "current user" and "token renewal" purposes in a single call.
+- Token expiry is 24 hours; the frontend should call `GET /auth/token` on
+  startup (or on each page navigation) to silently renew the session.
