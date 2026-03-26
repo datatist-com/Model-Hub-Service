@@ -44,7 +44,7 @@ impl PaginationParams {
     }
 
     pub fn offset(&self) -> i64 {
-        (self.page() - 1) * self.page_size()
+        (self.page() - 1).saturating_mul(self.page_size())
     }
 
     /// Map a camelCase or snake_case sort field to a whitelisted DB column.

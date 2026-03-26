@@ -145,13 +145,12 @@ pub fn decrypt(token: &str) -> Result<DecodedLicense, AppError> {
 }
 
 fn unix_to_iso8601(secs: u64) -> String {
-    // Use chrono which is already a dependency.
     use chrono::{TimeZone, Utc};
-    let dt = Utc
-        .timestamp_opt(secs as i64, 0)
+    Utc.timestamp_opt(secs as i64, 0)
         .single()
-        .unwrap_or_else(|| Utc.timestamp_opt(0, 0).single().unwrap());
-    dt.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+        .unwrap_or_default()
+        .format("%Y-%m-%dT%H:%M:%SZ")
+        .to_string()
 }
 
 /// Returns true if the ISO-8601 UTC expires_at is still in the future.

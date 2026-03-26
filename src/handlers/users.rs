@@ -50,6 +50,9 @@ pub async fn create(
     if req.username.trim().is_empty() || req.password.is_empty() {
         return Err(AppError::BadRequest("Username and password required".into()));
     }
+    if req.password.len() < 6 {
+        return Err(AppError::BadRequest("Password must be at least 6 characters".into()));
+    }
     validate_role(&req.role).map_err(AppError::BadRequest)?;
 
     let password_hash = hash_password(&req.password)?;

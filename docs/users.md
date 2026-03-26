@@ -75,7 +75,7 @@
 | 字段 | 类型 | 必填 | 说明 |
 |------|------|------|------|
 | `username` | string | 是 | 用户名（唯一） |
-| `password` | string | 是 | 密码（Argon2 哈希存储） |
+| `password` | string | 是 | 密码（最少 6 位，Argon2 哈希存储） |
 | `realName` | string | 否 | 真实姓名 |
 | `role` | string | 是 | 角色 |
 

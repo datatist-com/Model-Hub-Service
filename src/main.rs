@@ -48,6 +48,7 @@ async fn main() -> std::io::Result<()> {
         App::new()
             .wrap(cors)
             .wrap(TracingLogger::default())
+            .app_data(web::JsonConfig::default().limit(1024 * 1024)) // 1 MB
             .app_data(cfg.clone())
             .app_data(pool.clone())
             .configure(routes::configure)
@@ -62,8 +63,12 @@ async fn seed_admin(pool: &sqlx::SqlitePool) {
     if let Ok(None) = user::find_by_username(pool, "admin").await {
         let hash = handlers::auth::hash_password("123456")
             .expect("Failed to hash seed password");
-        let _ =
-            user::insert_user(pool, "admin", &hash, Some("管理员"), "platform_admin").await;
-        tracing::info!("Seeded default admin user (username: admin, password: 123456)");
+        if let Err(e) =
+            user::insert_user(pool, "admin", &hash, Some("管理员"), "platform_admin").await
+        {
+            tracing::error!("Failed to seed admin user: {e}");
+        } else {
+            tracing::info!("Seeded default admin user (username: admin)");
+        }
     }
 }

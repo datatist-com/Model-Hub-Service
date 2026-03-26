@@ -56,7 +56,7 @@ pub async fn login(
         None => {
             // Log failed login (unknown user — use placeholder id)
             let _ = log_model::insert_login_log(
-                &pool, "", &body.username, Some(&ip), Some(&device),
+                &pool, "unknown", &body.username, Some(&ip), Some(&device),
                 "failed", Some("Invalid credentials"),
             ).await;
             return Err(AppError::Unauthorized("Invalid credentials".into()));
