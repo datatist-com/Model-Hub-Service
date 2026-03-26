@@ -31,6 +31,14 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
             .service(
                 web::scope("/profile")
                     .route("/password", web::put().to(handlers::profile::change_password)),
+            )
+            // Logs
+            .service(
+                web::scope("/logs")
+                    .route("/login", web::get().to(handlers::logs::all_login_logs))
+                    .route("/login/mine", web::get().to(handlers::logs::my_login_logs))
+                    .route("/operations", web::get().to(handlers::logs::all_operation_logs))
+                    .route("/operations/mine", web::get().to(handlers::logs::my_operation_logs)),
             ),
     );
 }

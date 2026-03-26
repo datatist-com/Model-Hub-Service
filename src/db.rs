@@ -14,6 +14,7 @@ pub async fn run_migrations(pool: &SqlitePool) {
         ("001_create_users",    include_str!("../migrations/001_create_users.sql")),
         ("002_create_tokens",   include_str!("../migrations/002_create_tokens.sql")),
         ("003_create_licenses", include_str!("../migrations/003_create_licenses.sql")),
+        ("004_create_logs",     include_str!("../migrations/004_create_logs.sql")),
     ] {
         sqlx::raw_sql(sql)
             .execute(pool)

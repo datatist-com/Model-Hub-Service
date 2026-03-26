@@ -4,6 +4,7 @@ use sqlx::SqlitePool;
 use crate::errors::{ApiResponse, AppError, PagedData};
 use crate::handlers::auth::hash_password;
 use crate::middleware::auth::AdminOnly;
+use crate::models::log as log_model;
 use crate::models::user::{
     self, CreateUserRequest, ListUsersQuery, UpdateUserRequest, UserView,
     validate_role, validate_status,
@@ -62,6 +63,11 @@ pub async fn create(
     )
     .await?;
 
+    let _ = log_model::insert_operation_log(
+        &pool, &_admin.0.sub, &_admin.0.username, "users", "create_user",
+        Some(&user.id), Some(&format!("Created user {}", user.username)), None,
+    ).await;
+
     Ok(ApiResponse::ok(UserView::from(user)))
 }
 
@@ -91,6 +97,11 @@ pub async fn update(
     )
     .await?;
 
+    let _ = log_model::insert_operation_log(
+        &pool, &_admin.0.sub, &_admin.0.username, "users", "update_user",
+        Some(&id), Some(&format!("Updated user {}", user.username)), None,
+    ).await;
+
     Ok(ApiResponse::ok(UserView::from(user)))
 }
 
@@ -108,5 +119,11 @@ pub async fn delete(
     }
 
     user::delete_user(&pool, &id).await?;
+
+    let _ = log_model::insert_operation_log(
+        &pool, &admin.0.sub, &admin.0.username, "users", "delete_user",
+        Some(&id), None, None,
+    ).await;
+
     Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
 }

@@ -5,6 +5,7 @@ use sqlx::SqlitePool;
 use crate::errors::{ApiResponse, AppError};
 use crate::handlers::auth::{hash_password, verify_password};
 use crate::middleware::auth::Claims;
+use crate::models::log as log_model;
 use crate::models::user;
 
 #[derive(Deserialize)]
@@ -37,6 +38,11 @@ pub async fn change_password(
 
     let new_hash = hash_password(&req.new_password)?;
     user::update_password(&pool, &claims.sub, &new_hash).await?;
+
+    let _ = log_model::insert_operation_log(
+        &pool, &claims.sub, &claims.username, "profile", "change_password",
+        None, None, None,
+    ).await;
 
     Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
 }

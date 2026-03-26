@@ -4,7 +4,7 @@ use sqlx::SqlitePool;
 
 use crate::errors::{ApiResponse, AppError};
 use crate::middleware::auth::Claims;
-use crate::models::{token as token_model, user};
+use crate::models::{log as log_model, token as token_model, user};
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
@@ -43,16 +43,6 @@ pub async fn login(
         return Err(AppError::BadRequest("Username and password required".into()));
     }
 
-    let db_user = user::find_by_username(&pool, &body.username)
-        .await?
-        .ok_or_else(|| AppError::Unauthorized("Invalid credentials".into()))?;
-
-    if db_user.status != "active" {
-        return Err(AppError::Forbidden("Account is frozen".into()));
-    }
-
-    verify_password(&body.password, &db_user.password_hash)?;
-
     let ip = token_model::extract_ip(&req);
     let device = req
         .headers()
@@ -61,8 +51,46 @@ pub async fn login(
         .map(token_model::parse_device)
         .unwrap_or_else(|| "Unknown".into());
 
+    let db_user = match user::find_by_username(&pool, &body.username).await? {
+        Some(u) => u,
+        None => {
+            // Log failed login (unknown user — use placeholder id)
+            let _ = log_model::insert_login_log(
+                &pool, "", &body.username, Some(&ip), Some(&device),
+                "failed", Some("Invalid credentials"),
+            ).await;
+            return Err(AppError::Unauthorized("Invalid credentials".into()));
+        }
+    };
+
+    if db_user.status != "active" {
+        let _ = log_model::insert_login_log(
+            &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
+            "failed", Some("Account is frozen"),
+        ).await;
+        return Err(AppError::Forbidden("Account is frozen".into()));
+    }
+
+    if let Err(e) = verify_password(&body.password, &db_user.password_hash) {
+        let _ = log_model::insert_login_log(
+            &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
+            "failed", Some("Invalid credentials"),
+        ).await;
+        return Err(e);
+    }
+
     let raw_token = token_model::generate();
     token_model::create(&pool, &db_user.id, &raw_token, Some(&ip), Some(&device)).await?;
+
+    // Log successful login
+    let _ = log_model::insert_login_log(
+        &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
+        "success", None,
+    ).await;
+    let _ = log_model::insert_operation_log(
+        &pool, &db_user.id, &db_user.username, "auth", "login",
+        None, None, Some(&ip),
+    ).await;
 
     Ok(ApiResponse::ok(LoginData {
         access_token: raw_token,
@@ -83,6 +111,12 @@ pub async fn logout(
     claims: Claims,
 ) -> Result<HttpResponse, AppError> {
     token_model::revoke(&pool, &claims.token).await?;
+
+    let _ = log_model::insert_operation_log(
+        &pool, &claims.sub, &claims.username, "auth", "logout",
+        None, None, None,
+    ).await;
+
     Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
 }
 
