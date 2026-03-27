@@ -39,6 +39,12 @@ pub fn configure(cfg: &mut web::ServiceConfig) {
                     .route("/login/mine", web::get().to(handlers::logs::my_login_logs))
                     .route("/operations", web::get().to(handlers::logs::all_operation_logs))
                     .route("/operations/mine", web::get().to(handlers::logs::my_operation_logs)),
+            )
+            // Token management (admin)
+            .service(
+                web::scope("/tokens")
+                    .route("", web::get().to(handlers::tokens::list))
+                    .route("/{id}", web::delete().to(handlers::tokens::revoke)),
             ),
     );
 }

@@ -1,6 +1,7 @@
 use sqlx::SqlitePool;
 
 use crate::errors::AppError;
+use crate::pagination::PaginationParams;
 
 // ── Structs ──
 
@@ -95,6 +96,122 @@ pub async fn refresh(pool: &SqlitePool, token: &str) -> Result<(), AppError> {
     .bind(token)
     .execute(pool)
     .await?;
+    Ok(())
+}
+
+// ── Token management (admin) ──
+
+/// Active token row joined with username, for admin listing.
+#[derive(Debug, sqlx::FromRow)]
+pub struct ActiveTokenRow {
+    pub id: String,
+    pub user_id: String,
+    pub username: String,
+    pub token: String,
+    pub ip: Option<String>,
+    pub device: Option<String>,
+    pub status: String,
+    pub created_at: String,
+    pub expires_at: String,
+}
+
+/// Safe DTO — token is masked.
+#[derive(Debug, serde::Serialize)]
+pub struct TokenView {
+    pub id: String,
+    #[serde(rename = "userId")]
+    pub user_id: String,
+    pub username: String,
+    #[serde(rename = "maskedToken")]
+    pub masked_token: String,
+    pub ip: Option<String>,
+    pub device: Option<String>,
+    pub status: String,
+    #[serde(rename = "createdAt")]
+    pub created_at: String,
+    #[serde(rename = "expiresAt")]
+    pub expires_at: String,
+}
+
+impl From<ActiveTokenRow> for TokenView {
+    fn from(r: ActiveTokenRow) -> Self {
+        Self {
+            id: r.id,
+            user_id: r.user_id,
+            username: r.username,
+            masked_token: mask_token(&r.token),
+            ip: r.ip,
+            device: r.device,
+            status: r.status,
+            created_at: r.created_at,
+            expires_at: r.expires_at,
+        }
+    }
+}
+
+fn mask_token(token: &str) -> String {
+    let chars: Vec<char> = token.chars().collect();
+    if chars.len() <= 12 {
+        return "****".to_string();
+    }
+    let prefix: String = chars[..8].iter().collect();
+    let suffix: String = chars[chars.len() - 4..].iter().collect();
+    format!("{prefix}****{suffix}")
+}
+
+pub struct TokenListResult {
+    pub items: Vec<ActiveTokenRow>,
+    pub total: i64,
+}
+
+/// List active (status='active' AND not expired) tokens with pagination, joined with username.
+pub async fn list_active(
+    pool: &SqlitePool,
+    pagination: &PaginationParams,
+) -> Result<TokenListResult, AppError> {
+    let offset = pagination.offset();
+    let page_size = pagination.page_size();
+
+    let total: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM tokens WHERE status = 'active' AND expires_at > datetime('now')",
+    )
+    .fetch_one(pool)
+    .await?;
+
+    let items = sqlx::query_as::<_, ActiveTokenRow>(
+        "SELECT t.id, t.user_id, u.username, t.token, t.ip, t.device, t.status, \
+                t.created_at, t.expires_at \
+         FROM tokens t JOIN users u ON t.user_id = u.id \
+         WHERE t.status = 'active' AND t.expires_at > datetime('now') \
+         ORDER BY t.created_at DESC LIMIT ?1 OFFSET ?2",
+    )
+    .bind(page_size)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
+
+    Ok(TokenListResult { items, total })
+}
+
+/// Revoke a token by its id. Returns an error if the token doesn't exist or is already revoked/expired.
+pub async fn revoke_by_id(pool: &SqlitePool, id: &str) -> Result<(), AppError> {
+    // Fetch current state first
+    let row = sqlx::query_as::<_, Token>(
+        "SELECT * FROM tokens WHERE id = ?1",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await?
+    .ok_or_else(|| AppError::NotFound("error.tokens.not_found".into()))?;
+
+    if row.status != "active" {
+        return Err(AppError::BadRequest("error.tokens.already_revoked".into()));
+    }
+
+    sqlx::query("UPDATE tokens SET status = 'revoked' WHERE id = ?1")
+        .bind(id)
+        .execute(pool)
+        .await?;
     Ok(())
 }
 

@@ -46,6 +46,8 @@
 | `message.license.verify.success` | — | 许可证验证完成 |
 | `message.license.activate.success` | — | 许可证激活成功 |
 | `message.license.info.success` | — | 获取许可证信息成功 |
+| `message.tokens.list.success` | — | 获取 Token 列表成功 |
+| `message.tokens.revoke.success` | — | Token 注销成功 |
 
 ---
 
@@ -91,6 +93,13 @@
 | `error.license.invalid_payload` | — | 许可证载荷无效 |
 | `error.license.unsupported_version` | `version`: 版本号 | 不支持的许可证版本 |
 | `error.license.invalid_encoding` | — | 许可证编码无效 |
+
+### Token 管理
+
+| i18n_key | params | 说明 |
+|---|---|---|
+| `error.tokens.not_found` | — | Token 不存在 |
+| `error.tokens.already_revoked` | — | Token 已注销 |
 
 ### 通用
 
@@ -168,6 +177,8 @@ const zhCN: Record<string, string> = {
   "message.license.verify.success": "许可证验证完成",
   "message.license.activate.success": "许可证激活成功",
   "message.license.info.success": "获取许可证信息成功",
+  "message.tokens.list.success": "获取 Token 列表成功",
+  "message.tokens.revoke.success": "Token 注销成功",
 
   // 错误消息
   "error.auth.credentials_required": "用户名和密码必填",
@@ -191,6 +202,8 @@ const zhCN: Record<string, string> = {
   "error.license.invalid_payload": "许可证载荷无效",
   "error.license.unsupported_version": "不支持的许可证版本 {version}",
   "error.license.invalid_encoding": "许可证编码无效",
+  "error.tokens.not_found": "Token 不存在",
+  "error.tokens.already_revoked": "Token 已注销",
   "error.resource.not_found": "资源不存在",
   "error.resource.conflict": "资源已存在",
   "error.internal": "内部服务错误",
@@ -233,6 +246,8 @@ const enUS: Record<string, string> = {
   "message.license.verify.success": "License verified",
   "message.license.activate.success": "License activated",
   "message.license.info.success": "License info fetched",
+  "message.tokens.list.success": "Token list fetched",
+  "message.tokens.revoke.success": "Token revoked",
 
   // Error messages
   "error.auth.credentials_required": "Username and password are required",
@@ -256,6 +271,8 @@ const enUS: Record<string, string> = {
   "error.license.invalid_payload": "Invalid license payload",
   "error.license.unsupported_version": "Unsupported license version {version}",
   "error.license.invalid_encoding": "Invalid license encoding",
+  "error.tokens.not_found": "Token not found",
+  "error.tokens.already_revoked": "Token already revoked",
   "error.resource.not_found": "Resource not found",
   "error.resource.conflict": "Resource already exists",
   "error.internal": "Internal server error",
