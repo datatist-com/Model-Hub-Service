@@ -70,15 +70,6 @@ pub struct UpdateUserRequest {
     pub status: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct ListUsersQuery {
-    #[serde(flatten)]
-    pub pagination: PaginationParams,
-    pub role: Option<String>,
-    pub status: Option<String>,
-    pub keyword: Option<String>,
-}
-
 // ── Validation helpers ──
 
 const VALID_ROLES: &[&str] = &["model_developer", "model_operator", "platform_admin"];
@@ -121,63 +112,24 @@ pub struct ListResult {
     pub total: i64,
 }
 
-const USER_SORT_COLS: &[(&str, &str)] = &[
-    ("createdAt", "created_at"),
-    ("created_at", "created_at"),
-    ("updatedAt", "updated_at"),
-    ("updated_at", "updated_at"),
-    ("username", "username"),
-    ("role", "role"),
-    ("status", "status"),
-    ("realName", "real_name"),
-    ("real_name", "real_name"),
-];
-
 pub async fn list_users(
     pool: &SqlitePool,
-    role: Option<&str>,
-    status: Option<&str>,
-    keyword: Option<&str>,
-    pagination: &crate::pagination::PaginationParams,
+    pagination: &PaginationParams,
 ) -> Result<ListResult, sqlx::Error> {
-    let sort_col = pagination.safe_sort_col(USER_SORT_COLS, "created_at");
-    let order = pagination.safe_order();
     let offset = pagination.offset();
     let page_size = pagination.page_size();
 
-    let count_sql = r#"
-        SELECT COUNT(*)
-        FROM users
-        WHERE (?1 IS NULL OR role = ?1)
-          AND (?2 IS NULL OR status = ?2)
-          AND (?3 IS NULL OR username LIKE '%' || ?3 || '%' OR real_name LIKE '%' || ?3 || '%')
-    "#;
-    let total: i32 = sqlx::query_scalar(count_sql)
-        .bind(role)
-        .bind(status)
-        .bind(keyword)
+    let total: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
         .fetch_one(pool)
         .await?;
 
-    let query_sql = format!(
-        r#"
-        SELECT *
-        FROM users
-        WHERE (?1 IS NULL OR role = ?1)
-          AND (?2 IS NULL OR status = ?2)
-          AND (?3 IS NULL OR username LIKE '%' || ?3 || '%' OR real_name LIKE '%' || ?3 || '%')
-        ORDER BY {sort_col} {order}
-        LIMIT ?4 OFFSET ?5
-        "#
-    );
-    let items = sqlx::query_as::<_, User>(&query_sql)
-        .bind(role)
-        .bind(status)
-        .bind(keyword)
-        .bind(page_size)
-        .bind(offset)
-        .fetch_all(pool)
-        .await?;
+    let items = sqlx::query_as::<_, User>(
+        "SELECT * FROM users ORDER BY created_at ASC LIMIT ?1 OFFSET ?2",
+    )
+    .bind(page_size)
+    .bind(offset)
+    .fetch_all(pool)
+    .await?;
 
     Ok(ListResult {
         items,

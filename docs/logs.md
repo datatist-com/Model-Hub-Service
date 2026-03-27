@@ -14,9 +14,8 @@
 |------|------|------|------|
 | `page` | number | 否 | 页码，默认 1 |
 | `pageSize` | number | 否 | 每页条数，默认 20 |
-| `sortBy` | string | 否 | 排序字段，默认 `createdAt` |
-| `sortOrder` | string | 否 | `asc`/`desc`，默认 `desc` |
-| `result` | string | 否 | 按结果筛选：`success` / `failed` |
+
+固定按 `created_at DESC`（最新优先）排序，无筛选参数。
 
 #### 响应 `200`
 
@@ -33,7 +32,6 @@
         "ip": "192.168.1.100",
         "device": "macOS Chrome",
         "result": "success",
-        "detail": null,
         "createdAt": "2024-03-26T10:30:00"
       }
     ],
@@ -63,10 +61,8 @@
 |------|------|------|------|
 | `page` | number | 否 | 页码，默认 1 |
 | `pageSize` | number | 否 | 每页条数，默认 20 |
-| `sortBy` | string | 否 | 排序字段，默认 `createdAt` |
-| `sortOrder` | string | 否 | `asc`/`desc`，默认 `desc` |
-| `userId` | string | 否 | 按用户 ID 筛选 |
-| `result` | string | 否 | 按结果筛选：`success` / `failed` |
+
+固定按 `created_at DESC`（最新优先）排序，无筛选参数。
 
 #### 响应 `200`
 
@@ -83,6 +79,8 @@
 
 ## 操作日志
 
+> 登录操作不记录在操作日志中（仅记录在登录日志中）。
+
 ### GET /api/v1/logs/operations/mine
 
 查询当前登录用户自己的操作历史。**需要认证（任意角色）。**
@@ -93,10 +91,8 @@
 |------|------|------|------|
 | `page` | number | 否 | 页码，默认 1 |
 | `pageSize` | number | 否 | 每页条数，默认 20 |
-| `sortBy` | string | 否 | 排序字段，默认 `createdAt` |
-| `sortOrder` | string | 否 | `asc`/`desc`，默认 `desc` |
-| `module` | string | 否 | 按模块筛选 |
-| `action` | string | 否 | 按操作筛选 |
+
+固定按 `created_at DESC`（最新优先）排序，无筛选参数。
 
 #### 响应 `200`
 
@@ -113,7 +109,7 @@
         "module": "users",
         "action": "create_user",
         "targetId": "target-user-uuid",
-        "detail": "Created user zhangsan",
+        "detail": "{\"i18n_key\":\"operation.users.create_user\",\"params\":{\"username\":\"zhangsan\"}}",
         "ip": "192.168.1.100",
         "createdAt": "2024-03-26T10:30:00"
       }
@@ -125,11 +121,16 @@
 }
 ```
 
+#### `detail` 字段
+
+JSON 字符串，格式为 `{"i18n_key": "...", "params": {...}}`，供前端国际化渲染使用。  
+详见 [i18n-keys.md](i18n-keys.md)。
+
 #### `module` 取值
 
 | 值 | 含义 |
 |----|------|
-| `auth` | 认证相关 |
+| `auth` | 认证相关（仅 logout） |
 | `users` | 用户管理 |
 | `profile` | 个人设置 |
 
@@ -137,7 +138,6 @@
 
 | 值 | 含义 |
 |----|------|
-| `login` | 登录 |
 | `logout` | 登出 |
 | `create_user` | 创建用户 |
 | `update_user` | 更新用户 |
@@ -156,11 +156,8 @@
 |------|------|------|------|
 | `page` | number | 否 | 页码，默认 1 |
 | `pageSize` | number | 否 | 每页条数，默认 20 |
-| `sortBy` | string | 否 | 排序字段，默认 `createdAt` |
-| `sortOrder` | string | 否 | `asc`/`desc`，默认 `desc` |
-| `userId` | string | 否 | 按用户 ID 筛选 |
-| `module` | string | 否 | 按模块筛选 |
-| `action` | string | 否 | 按操作筛选 |
+
+固定按 `created_at DESC`（最新优先）排序，无筛选参数。
 
 #### 响应 `200`
 

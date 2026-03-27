@@ -54,10 +54,9 @@ pub async fn login(
     let db_user = match user::find_by_username(&pool, &body.username).await? {
         Some(u) => u,
         None => {
-            // Log failed login (unknown user — use placeholder id)
             let _ = log_model::insert_login_log(
                 &pool, "unknown", &body.username, Some(&ip), Some(&device),
-                "failed", Some("Invalid credentials"),
+                "failed",
             ).await;
             return Err(AppError::Unauthorized("Invalid credentials".into()));
         }
@@ -66,7 +65,7 @@ pub async fn login(
     if db_user.status != "active" {
         let _ = log_model::insert_login_log(
             &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
-            "failed", Some("Account is frozen"),
+            "failed",
         ).await;
         return Err(AppError::Forbidden("Account is frozen".into()));
     }
@@ -74,7 +73,7 @@ pub async fn login(
     if let Err(e) = verify_password(&body.password, &db_user.password_hash) {
         let _ = log_model::insert_login_log(
             &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
-            "failed", Some("Invalid credentials"),
+            "failed",
         ).await;
         return Err(e);
     }
@@ -82,14 +81,10 @@ pub async fn login(
     let raw_token = token_model::generate();
     token_model::create(&pool, &db_user.id, &raw_token, Some(&ip), Some(&device)).await?;
 
-    // Log successful login
+    // Log successful login (login_logs only, not operation_logs)
     let _ = log_model::insert_login_log(
         &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
-        "success", None,
-    ).await;
-    let _ = log_model::insert_operation_log(
-        &pool, &db_user.id, &db_user.username, "auth", "login",
-        None, None, Some(&ip),
+        "success",
     ).await;
 
     Ok(ApiResponse::ok(LoginData {
@@ -107,14 +102,20 @@ pub async fn login(
 
 /// POST /api/v1/auth/logout — revoke the current token in DB.
 pub async fn logout(
+    req: HttpRequest,
     pool: web::Data<SqlitePool>,
     claims: Claims,
 ) -> Result<HttpResponse, AppError> {
     token_model::revoke(&pool, &claims.token).await?;
 
+    let ip = token_model::extract_ip(&req);
+    let detail = serde_json::json!({
+        "i18n_key": "operation.auth.logout",
+        "params": {}
+    }).to_string();
     let _ = log_model::insert_operation_log(
         &pool, &claims.sub, &claims.username, "auth", "logout",
-        None, None, None,
+        None, Some(&detail), Some(&ip),
     ).await;
 
     Ok(ApiResponse::ok(serde_json::json!({ "success": true })))

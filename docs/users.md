@@ -14,13 +14,8 @@
 |------|------|------|------|
 | `page` | number | 否 | 页码，默认 1 |
 | `pageSize` | number | 否 | 每页条数，默认 20，范围 1–200 |
-| `sortBy` | string | 否 | 排序字段，默认 `createdAt` |
-| `sortOrder` | string | 否 | 排序方向 `asc`/`desc`，默认 `desc` |
-| `role` | string | 否 | 按角色筛选 |
-| `status` | string | 否 | 按状态筛选 |
-| `keyword` | string | 否 | 模糊搜索用户名或真实姓名 |
 
-**`sortBy` 支持的字段**：`createdAt`、`updatedAt`、`username`、`role`、`status`、`realName`（同时支持 snake_case 写法）。
+固定按创建时间从早到晚（`created_at ASC`）排序，无筛选参数。
 
 ### 响应 `200`
 
