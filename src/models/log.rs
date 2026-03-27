@@ -1,8 +1,38 @@
 use serde::Serialize;
+use serde_json::Value;
 use sqlx::SqlitePool;
 
 use crate::errors::AppError;
 use crate::pagination::PaginationParams;
+
+/// Build the JSON detail string for operation logs.
+pub fn build_detail(i18n_key: &str, params: Value) -> String {
+    serde_json::json!({
+        "i18n_key": i18n_key,
+        "params": params
+    }).to_string()
+}
+
+/// Insert an operation log entry; logs a warning on failure instead of propagating the error.
+pub async fn log_operation(
+    pool: &SqlitePool,
+    user_id: &str,
+    username: &str,
+    module: &str,
+    action: &str,
+    target_id: Option<&str>,
+    i18n_key: &str,
+    params: Value,
+    ip: &str,
+) {
+    let detail = build_detail(i18n_key, params);
+    if let Err(e) = insert_operation_log(
+        pool, user_id, username, module, action,
+        target_id, Some(&detail), Some(ip),
+    ).await {
+        tracing::warn!("Failed to write operation log: {e}");
+    }
+}
 
 // ── Login Log ──
 
@@ -56,7 +86,7 @@ pub async fn list_login_logs(
     let offset = pagination.offset();
     let page_size = pagination.page_size();
 
-    let total: i32 = sqlx::query_scalar(
+    let total: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM login_logs WHERE (?1 IS NULL OR user_id = ?1)",
     )
     .bind(user_id)
@@ -76,7 +106,7 @@ pub async fn list_login_logs(
 
     Ok(LoginLogListResult {
         items,
-        total: total as i64,
+        total,
     })
 }
 
@@ -139,7 +169,7 @@ pub async fn list_operation_logs(
     let offset = pagination.offset();
     let page_size = pagination.page_size();
 
-    let total: i32 = sqlx::query_scalar(
+    let total: i64 = sqlx::query_scalar(
         "SELECT COUNT(*) FROM operation_logs WHERE (?1 IS NULL OR user_id = ?1)",
     )
     .bind(user_id)
@@ -158,6 +188,6 @@ pub async fn list_operation_logs(
 
     Ok(OperationLogListResult {
         items,
-        total: total as i64,
+        total,
     })
 }

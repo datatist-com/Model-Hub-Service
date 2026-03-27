@@ -61,7 +61,7 @@ async fn main() -> std::io::Result<()> {
 async fn seed_admin(pool: &sqlx::SqlitePool) {
     use models::user;
     if let Ok(None) = user::find_by_username(pool, "admin").await {
-        let hash = handlers::auth::hash_password("123456")
+        let hash = user::hash_password("123456")
             .expect("Failed to hash seed password");
         if let Err(e) =
             user::insert_user(pool, "admin", &hash, Some("管理员"), "platform_admin").await

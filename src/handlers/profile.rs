@@ -3,11 +3,10 @@ use serde::Deserialize;
 use sqlx::SqlitePool;
 
 use crate::errors::{ApiResponse, AppError};
-use crate::handlers::auth::{hash_password, verify_password};
+use crate::models::user::{self, hash_password, verify_password};
 use crate::middleware::auth::Claims;
 use crate::models::log as log_model;
 use crate::models::token::extract_ip;
-use crate::models::user;
 
 #[derive(Deserialize)]
 pub struct ChangePasswordRequest {
@@ -42,13 +41,9 @@ pub async fn change_password(
     user::update_password(&pool, &claims.sub, &new_hash).await?;
 
     let ip = extract_ip(&http_req);
-    let detail = serde_json::json!({
-        "i18n_key": "operation.profile.change_password",
-        "params": {}
-    }).to_string();
-    let _ = log_model::insert_operation_log(
+    log_model::log_operation(
         &pool, &claims.sub, &claims.username, "profile", "change_password",
-        None, Some(&detail), Some(&ip),
+        None, "operation.profile.change_password", serde_json::json!({}), &ip,
     ).await;
 
     Ok(ApiResponse::ok(serde_json::json!({ "success": true }), "message.profile.change_password.success"))

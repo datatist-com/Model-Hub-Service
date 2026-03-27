@@ -2,13 +2,12 @@ use actix_web::{web, HttpRequest, HttpResponse};
 use sqlx::SqlitePool;
 
 use crate::errors::{ApiResponse, AppError, PagedData};
-use crate::handlers::auth::hash_password;
 use crate::middleware::auth::AdminOnly;
 use crate::models::log as log_model;
 use crate::models::token::extract_ip;
 use crate::models::user::{
     self, CreateUserRequest, UpdateUserRequest, UserView,
-    validate_role, validate_status,
+    hash_password, validate_role, validate_status,
 };
 
 /// GET /api/v1/users
@@ -62,13 +61,10 @@ pub async fn create(
     .await?;
 
     let ip = extract_ip(&req);
-    let detail = serde_json::json!({
-        "i18n_key": "operation.users.create_user",
-        "params": { "username": &user.username }
-    }).to_string();
-    let _ = log_model::insert_operation_log(
+    log_model::log_operation(
         &pool, &_admin.0.sub, &_admin.0.username, "users", "create_user",
-        Some(&user.id), Some(&detail), Some(&ip),
+        Some(&user.id), "operation.users.create_user",
+        serde_json::json!({"username": &user.username}), &ip,
     ).await;
 
     let username = user.username.clone();
@@ -104,13 +100,10 @@ pub async fn update(
     .await?;
 
     let ip = extract_ip(&req);
-    let detail = serde_json::json!({
-        "i18n_key": "operation.users.update_user",
-        "params": { "username": &user.username }
-    }).to_string();
-    let _ = log_model::insert_operation_log(
+    log_model::log_operation(
         &pool, &_admin.0.sub, &_admin.0.username, "users", "update_user",
-        Some(&id), Some(&detail), Some(&ip),
+        Some(&id), "operation.users.update_user",
+        serde_json::json!({"username": &user.username}), &ip,
     ).await;
 
     let username = user.username.clone();
@@ -139,13 +132,10 @@ pub async fn delete(
     user::delete_user(&pool, &id).await?;
 
     let ip = extract_ip(&req);
-    let detail = serde_json::json!({
-        "i18n_key": "operation.users.delete_user",
-        "params": { "username": &target_username }
-    }).to_string();
-    let _ = log_model::insert_operation_log(
+    log_model::log_operation(
         &pool, &admin.0.sub, &admin.0.username, "users", "delete_user",
-        Some(&id), Some(&detail), Some(&ip),
+        Some(&id), "operation.users.delete_user",
+        serde_json::json!({"username": &target_username}), &ip,
     ).await;
 
     Ok(ApiResponse::ok(serde_json::json!({ "success": true }), "message.users.delete.success"))

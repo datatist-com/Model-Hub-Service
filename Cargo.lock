@@ -1332,6 +1332,7 @@ dependencies = [
  "argon2",
  "base64",
  "chrono",
+ "rand 0.8.5",
  "serde",
  "serde_json",
  "serde_qs",

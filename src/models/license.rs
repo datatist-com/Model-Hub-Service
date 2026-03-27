@@ -136,7 +136,7 @@ pub fn decrypt(token: &str) -> Result<DecodedLicense, AppError> {
         .duration_since(UNIX_EPOCH)
         .unwrap()
         .as_secs();
-    // Format as ISO-8601 UTC using manual calculation (no chrono dep needed here)
+    // Format as ISO-8601 UTC
     let expires_iso = unix_to_iso8601(expires_secs);
 
     Ok(DecodedLicense {
@@ -153,7 +153,6 @@ fn unix_to_iso8601(secs: u64) -> String {
         .format("%Y-%m-%dT%H:%M:%SZ")
         .to_string()
 }
-
 /// Returns true if the ISO-8601 UTC expires_at is still in the future.
 pub fn is_valid(expires_at: &str) -> bool {
     use chrono::{DateTime, Utc};
@@ -175,15 +174,21 @@ pub async fn find_active(pool: &SqlitePool) -> Result<Option<License>, AppError>
 }
 
 /// Mark all current 'active' licenses as 'replaced', then insert new one.
+/// Wrapped in a transaction so that if INSERT fails, the old license stays active.
 pub async fn activate(
     pool: &SqlitePool,
     token: &str,
     project_name: &str,
     expires_at: &str,
 ) -> Result<License, AppError> {
+    let mut tx = pool.begin().await.map_err(|e| {
+        tracing::error!("Failed to begin transaction: {e}");
+        AppError::Internal("error.internal".into())
+    })?;
+
     // Replace existing active license.
     sqlx::query("UPDATE licenses SET status = 'replaced' WHERE status = 'active'")
-        .execute(pool)
+        .execute(&mut *tx)
         .await?;
 
     let id = uuid::Uuid::new_v4().to_string();
@@ -198,8 +203,13 @@ pub async fn activate(
     .bind(token)
     .bind(project_name)
     .bind(expires_at)
-    .fetch_one(pool)
+    .fetch_one(&mut *tx)
     .await?;
+
+    tx.commit().await.map_err(|e| {
+        tracing::error!("Failed to commit transaction: {e}");
+        AppError::Internal("error.internal".into())
+    })?;
 
     Ok(row)
 }

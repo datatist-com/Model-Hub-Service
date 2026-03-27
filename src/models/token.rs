@@ -101,13 +101,11 @@ pub async fn refresh(pool: &SqlitePool, token: &str) -> Result<(), AppError> {
 // ── Helper: generate a 32-char alphanumeric token ──
 
 pub fn generate() -> String {
+    use rand::Rng;
     const CHARSET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
-    let a = uuid::Uuid::new_v4();
-    let b = uuid::Uuid::new_v4();
-    a.as_bytes()
-        .iter()
-        .chain(b.as_bytes().iter())
-        .map(|&byte| CHARSET[byte as usize % CHARSET.len()] as char)
+    let mut rng = rand::thread_rng();
+    (0..32)
+        .map(|_| CHARSET[rng.gen_range(0..CHARSET.len())] as char)
         .collect()
 }
 

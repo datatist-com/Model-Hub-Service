@@ -43,14 +43,11 @@ pub enum AppError {
 
 impl fmt::Display for AppError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::BadRequest(m) => write!(f, "{}", m.key),
-            Self::Unauthorized(m) => write!(f, "{}", m.key),
-            Self::Forbidden(m) => write!(f, "{}", m.key),
-            Self::NotFound(m) => write!(f, "{}", m.key),
-            Self::Conflict(m) => write!(f, "{}", m.key),
-            Self::Internal(m) => write!(f, "{}", m.key),
-        }
+        let key = match self {
+            Self::BadRequest(m) | Self::Unauthorized(m) | Self::Forbidden(m)
+            | Self::NotFound(m) | Self::Conflict(m) | Self::Internal(m) => &m.key,
+        };
+        f.write_str(key)
     }
 }
 

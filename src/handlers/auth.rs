@@ -5,6 +5,7 @@ use sqlx::SqlitePool;
 use crate::errors::{ApiResponse, AppError};
 use crate::middleware::auth::Claims;
 use crate::models::{log as log_model, token as token_model, user};
+use crate::models::user::verify_password;
 
 #[derive(Deserialize)]
 pub struct LoginRequest {
@@ -54,27 +55,33 @@ pub async fn login(
     let db_user = match user::find_by_username(&pool, &body.username).await? {
         Some(u) => u,
         None => {
-            let _ = log_model::insert_login_log(
+            if let Err(e) = log_model::insert_login_log(
                 &pool, "unknown", &body.username, Some(&ip), Some(&device),
                 "failed",
-            ).await;
+            ).await {
+                tracing::warn!("Failed to write login log: {e}");
+            }
             return Err(AppError::Unauthorized("error.auth.invalid_credentials".into()));
         }
     };
 
     if db_user.status != "active" {
-        let _ = log_model::insert_login_log(
+        if let Err(e) = log_model::insert_login_log(
             &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
             "failed",
-        ).await;
+        ).await {
+            tracing::warn!("Failed to write login log: {e}");
+        }
         return Err(AppError::Forbidden("error.auth.account_frozen".into()));
     }
 
     if let Err(e) = verify_password(&body.password, &db_user.password_hash) {
-        let _ = log_model::insert_login_log(
+        if let Err(log_err) = log_model::insert_login_log(
             &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
             "failed",
-        ).await;
+        ).await {
+            tracing::warn!("Failed to write login log: {log_err}");
+        }
         return Err(e);
     }
 
@@ -82,10 +89,12 @@ pub async fn login(
     token_model::create(&pool, &db_user.id, &raw_token, Some(&ip), Some(&device)).await?;
 
     // Log successful login (login_logs only, not operation_logs)
-    let _ = log_model::insert_login_log(
+    if let Err(e) = log_model::insert_login_log(
         &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
         "success",
-    ).await;
+    ).await {
+        tracing::warn!("Failed to write login log: {e}");
+    }
 
     Ok(ApiResponse::ok_params(LoginData {
         access_token: raw_token,
@@ -109,13 +118,9 @@ pub async fn logout(
     token_model::revoke(&pool, &claims.token).await?;
 
     let ip = token_model::extract_ip(&req);
-    let detail = serde_json::json!({
-        "i18n_key": "operation.auth.logout",
-        "params": {}
-    }).to_string();
-    let _ = log_model::insert_operation_log(
+    log_model::log_operation(
         &pool, &claims.sub, &claims.username, "auth", "logout",
-        None, Some(&detail), Some(&ip),
+        None, "operation.auth.logout", serde_json::json!({}), &ip,
     ).await;
 
     Ok(ApiResponse::ok(serde_json::json!({ "success": true }), "message.auth.logout.success"))
@@ -145,25 +150,4 @@ pub async fn token_info(
             ui_theme: db_user.ui_theme,
         },
     }, "message.auth.token.success"))
-}
-
-// ── password helpers ──
-
-pub fn verify_password(password: &str, hash: &str) -> Result<(), AppError> {
-    use argon2::{Argon2, PasswordHash, PasswordVerifier};
-    let parsed = PasswordHash::new(hash)
-        .map_err(|_| AppError::Internal("error.internal.password_hash_corrupted".into()))?;
-    Argon2::default()
-        .verify_password(password.as_bytes(), &parsed)
-        .map_err(|_| AppError::Unauthorized("error.auth.invalid_credentials".into()))
-}
-
-pub fn hash_password(password: &str) -> Result<String, AppError> {
-    use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
-    use argon2::password_hash::rand_core::OsRng;
-    let salt = SaltString::generate(&mut OsRng);
-    Argon2::default()
-        .hash_password(password.as_bytes(), &salt)
-        .map(|h| h.to_string())
-        .map_err(|e| { tracing::error!("Password hashing failed: {e}"); AppError::Internal("error.internal.password_hash_failed".into()) })
 }

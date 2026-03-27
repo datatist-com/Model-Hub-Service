@@ -1,7 +1,32 @@
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
+use crate::errors::AppError;
 use crate::pagination::PaginationParams;
+
+// ── Password helpers ──
+
+pub fn verify_password(password: &str, hash: &str) -> Result<(), AppError> {
+    use argon2::{Argon2, PasswordHash, PasswordVerifier};
+    let parsed = PasswordHash::new(hash)
+        .map_err(|_| AppError::Internal("error.internal.password_hash_corrupted".into()))?;
+    Argon2::default()
+        .verify_password(password.as_bytes(), &parsed)
+        .map_err(|_| AppError::Unauthorized("error.auth.invalid_credentials".into()))
+}
+
+pub fn hash_password(password: &str) -> Result<String, AppError> {
+    use argon2::{password_hash::SaltString, Argon2, PasswordHasher};
+    use argon2::password_hash::rand_core::OsRng;
+    let salt = SaltString::generate(&mut OsRng);
+    Argon2::default()
+        .hash_password(password.as_bytes(), &salt)
+        .map(|h| h.to_string())
+        .map_err(|e| {
+            tracing::error!("Password hashing failed: {e}");
+            AppError::Internal("error.internal.password_hash_failed".into())
+        })
+}
 
 // ── Domain structs ──
 
@@ -125,7 +150,7 @@ pub async fn list_users(
     let offset = pagination.offset();
     let page_size = pagination.page_size();
 
-    let total: i32 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
+    let total: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM users")
         .fetch_one(pool)
         .await?;
 
@@ -139,7 +164,7 @@ pub async fn list_users(
 
     Ok(ListResult {
         items,
-        total: total as i64,
+        total,
     })
 }
 
