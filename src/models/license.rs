@@ -40,9 +40,9 @@ fn load_secret() -> Result<[u8; 32], AppError> {
     use base64::{engine::general_purpose::STANDARD, Engine};
     let raw = STANDARD
         .decode(EMBEDDED_SECRET_B64.trim())
-        .map_err(|e| AppError::Internal(format!("license secret decode: {e}")))?;
+        .map_err(|e| { tracing::error!("license secret decode: {e}"); AppError::Internal("error.internal".into()) })?;
     if raw.len() < 16 {
-        return Err(AppError::Internal("license secret too short".into()));
+        return Err(AppError::Internal("error.internal".into()));
     }
     let mut key = [0u8; 32];
     key.copy_from_slice(&raw[..32]);
@@ -55,7 +55,7 @@ fn b64url_decode(token: &str) -> Result<Vec<u8>, AppError> {
     let s = token.trim_end_matches('=');
     URL_SAFE_NO_PAD
         .decode(s)
-        .map_err(|_| AppError::BadRequest("invalid license token format".into()))
+        .map_err(|_| AppError::BadRequest("error.license.invalid_format".into()))
 }
 
 pub fn decrypt(token: &str) -> Result<DecodedLicense, AppError> {
@@ -67,15 +67,15 @@ pub fn decrypt(token: &str) -> Result<DecodedLicense, AppError> {
     let token = token.trim();
     let raw = b64url_decode(token)?;
     if raw.len() != RAW_LEN_BYTES {
-        return Err(AppError::BadRequest(format!(
-            "unsupported token length (expected {RAW_LEN_BYTES} bytes decoded, got {})",
-            raw.len()
+        return Err(AppError::BadRequest(crate::errors::I18nMsg::with_params(
+            "error.license.unsupported_length",
+            serde_json::json!({"expected": RAW_LEN_BYTES, "got": raw.len()}),
         )));
     }
 
     let key_bytes = load_secret()?;
     let cipher = Aes256Gcm::new_from_slice(&key_bytes)
-        .map_err(|e| AppError::Internal(format!("cipher init: {e}")))?;
+        .map_err(|e| { tracing::error!("cipher init: {e}"); AppError::Internal("error.internal".into()) })?;
 
     let nonce = Nonce::from_slice(&raw[..NONCE_LEN]);
 
@@ -85,7 +85,7 @@ pub fn decrypt(token: &str) -> Result<DecodedLicense, AppError> {
     let ct = &raw[NONCE_LEN..NONCE_LEN + PAYLOAD_LEN];
     let tag_short = &raw[NONCE_LEN + PAYLOAD_LEN..];
     if tag_short.len() != TAG_LEN {
-        return Err(AppError::BadRequest("invalid token tag length".into()));
+        return Err(AppError::BadRequest("error.license.invalid_tag".into()));
     }
     // Pad tag to 16 bytes (aes-gcm crate requires full 128-bit tag).
     let mut tag16 = [0u8; 16];
@@ -96,17 +96,18 @@ pub fn decrypt(token: &str) -> Result<DecodedLicense, AppError> {
 
     let payload = cipher
         .decrypt(nonce, AeadPayload { msg: &buf, aad: b"" })
-        .map_err(|_| AppError::BadRequest("license verification failed (invalid or tampered token)".into()))?;
+        .map_err(|_| AppError::BadRequest("error.license.verification_failed".into()))?;
 
     if payload.len() != PAYLOAD_LEN {
-        return Err(AppError::BadRequest("invalid license payload".into()));
+        return Err(AppError::BadRequest("error.license.invalid_payload".into()));
     }
 
     // Parse payload: 1 byte version + 4 bytes u32 big-endian timestamp + 20 bytes UTF-16LE name
     let version = payload[0];
     if version != LICENSE_VERSION {
-        return Err(AppError::BadRequest(format!(
-            "unsupported license version {version}"
+        return Err(AppError::BadRequest(crate::errors::I18nMsg::with_params(
+            "error.license.unsupported_version",
+            serde_json::json!({"version": version}),
         )));
     }
 
@@ -124,7 +125,7 @@ pub fn decrypt(token: &str) -> Result<DecodedLicense, AppError> {
             .map(|c| u16::from_le_bytes([c[0], c.get(1).copied().unwrap_or(0)]))
             .collect();
         String::from_utf16(&u16_vals)
-            .map_err(|_| AppError::BadRequest("invalid licensee name encoding".into()))?
+            .map_err(|_| AppError::BadRequest("error.license.invalid_encoding".into()))?
     } else {
         String::new()
     };

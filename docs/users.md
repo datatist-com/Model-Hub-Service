@@ -22,7 +22,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.users.list.success",
   "data": {
     "items": [
       {
@@ -45,10 +45,10 @@
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 401 | 未认证 |
-| 403 | 非管理员 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 401 | `error.auth.token_invalid` | 未认证 |
+| 403 | `error.auth.admin_required` | 非管理员 |
 
 ---
 
@@ -84,16 +84,18 @@
 
 ### 响应 `200`
 
-返回创建的用户对象（格式同列表中的 `items` 元素）。
+返回创建的用户对象（格式同列表中的 `items` 元素），`message` 为 `message.users.create.success`，`params` 包含 `username`。
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 用户名或密码为空 / 角色无效 |
-| 401 | 未认证 |
-| 403 | 非管理员 |
-| 409 | 用户名已存在 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 400 | `error.auth.credentials_required` | 用户名或密码为空 |
+| 400 | `error.users.password_too_short` | 密码不足 6 位 |
+| 400 | `error.users.invalid_role` | 角色无效 |
+| 401 | `error.auth.token_invalid` | 未认证 |
+| 403 | `error.auth.admin_required` | 非管理员 |
+| 409 | `error.resource.conflict` | 用户名已存在 |
 
 ---
 
@@ -127,16 +129,17 @@
 
 ### 响应 `200`
 
-返回更新后的用户对象。
+返回更新后的用户对象，`message` 为 `message.users.update.success`，`params` 包含 `username`。
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 角色或状态值无效 |
-| 401 | 未认证 |
-| 403 | 非管理员 |
-| 404 | 用户不存在 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 400 | `error.users.invalid_role` | 角色值无效 |
+| 400 | `error.users.invalid_status` | 状态值无效 |
+| 401 | `error.auth.token_invalid` | 未认证 |
+| 403 | `error.auth.admin_required` | 非管理员 |
+| 404 | `error.resource.not_found` | 用户不存在 |
 
 ---
 
@@ -155,7 +158,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.users.delete.success",
   "data": {
     "success": true
   }
@@ -164,9 +167,9 @@
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 不允许删除自己 |
-| 401 | 未认证 |
-| 403 | 非管理员 |
-| 404 | 用户不存在 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 400 | `error.users.cannot_delete_self` | 不允许删除自己 |
+| 401 | `error.auth.token_invalid` | 未认证 |
+| 403 | `error.auth.admin_required` | 非管理员 |
+| 404 | `error.resource.not_found` | 用户不存在 |

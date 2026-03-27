@@ -20,7 +20,8 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.auth.login.success",
+  "params": { "username": "admin" },
   "data": {
     "accessToken": "aBcDeFgH1234567890AbCdEfGh123456",
     "user": {
@@ -37,11 +38,11 @@
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 用户名或密码为空 |
-| 401 | 用户名不存在或密码错误 |
-| 403 | 账号已冻结 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 400 | `error.auth.credentials_required` | 用户名或密码为空 |
+| 401 | `error.auth.invalid_credentials` | 用户名不存在或密码错误 |
+| 403 | `error.auth.account_frozen` | 账号已冻结 |
 
 ### 说明
 
@@ -66,7 +67,7 @@ Authorization: Bearer <token>
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.auth.logout.success",
   "data": {
     "success": true
   }
@@ -75,9 +76,9 @@ Authorization: Bearer <token>
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 401 | Token 缺失或无效 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 401 | `error.auth.token_invalid` | Token 缺失或无效 |
 
 ---
 
@@ -96,7 +97,7 @@ Authorization: Bearer <token>
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.auth.token.success",
   "data": {
     "accessToken": "aBcDeFgH1234567890AbCdEfGh123456",
     "user": {
@@ -119,8 +120,8 @@ Authorization: Bearer <token>
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 401 | Token 缺失、无效或已过期 |
-| 403 | 账号已冻结 |
-| 404 | 用户不存在 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 401 | `error.auth.token_invalid` | Token 缺失、无效或已过期 |
+| 403 | `error.auth.account_frozen` | 账号已冻结 |
+| 404 | `error.users.not_found` | 用户不存在 |

@@ -9,22 +9,27 @@
 
 ## 通用响应格式
 
-所有接口返回统一信封：
+所有接口返回统一信封，`message` 字段为 i18n key，前端根据 key 匹配翻译文本：
 
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.auth.login.success",
+  "params": { "username": "admin" },
   "data": { ... }
 }
 ```
+
+> `params` 字段仅在需要动态参数时出现，无参数时不返回。
+> 所有 i18n key 及翻译模板详见 [i18n-keys.md](i18n-keys.md)。
 
 错误响应：
 
 ```json
 {
   "code": "BAD_REQUEST",
-  "message": "具体错误信息"
+  "message": "error.users.invalid_role",
+  "params": { "role": "invalid_value" }
 }
 ```
 

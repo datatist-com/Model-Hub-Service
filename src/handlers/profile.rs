@@ -28,13 +28,13 @@ pub async fn change_password(
 
     if req.new_password.len() < 6 {
         return Err(AppError::BadRequest(
-            "New password must be at least 6 characters".into(),
+            "error.profile.password_too_short".into(),
         ));
     }
 
     let current_user = user::find_by_id(&pool, &claims.sub)
         .await?
-        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
+        .ok_or_else(|| AppError::NotFound("error.users.not_found".into()))?;
 
     verify_password(&req.current_password, &current_user.password_hash)?;
 
@@ -51,5 +51,5 @@ pub async fn change_password(
         None, Some(&detail), Some(&ip),
     ).await;
 
-    Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
+    Ok(ApiResponse::ok(serde_json::json!({ "success": true }), "message.profile.change_password.success"))
 }

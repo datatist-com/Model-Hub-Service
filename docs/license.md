@@ -15,7 +15,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.license.info.success",
   "data": {
     "status": "active",
     "projectName": "MyProject",
@@ -31,7 +31,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.license.info.success",
   "data": {
     "status": "missing",
     "projectName": "",
@@ -69,7 +69,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.license.verify.success",
   "data": {
     "valid": true,
     "expired": false,
@@ -81,10 +81,10 @@
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | `licenseKey` 为空 |
-| 400 | 密钥无法解密或版本不支持 |
+| 状态码 | 场景 | message key |
+|--------|------|-------------|
+| 400 | `licenseKey` 为空 | `error.license.key_required` |
+| 400 | 密钥无法解密或版本不支持 | `error.license.*`（具体见 [i18n-keys.md](../i18n-keys.md)） |
 
 ---
 
@@ -102,12 +102,12 @@
 
 ### 响应 `200`
 
-返回格式与 `GET /api/v1/license` 相同，`status` 为 `active`。
+返回格式与 `GET /api/v1/license` 相同，`status` 为 `active`，`message` 为 `message.license.activate.success`。
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | `licenseKey` 为空 |
-| 400 | 密钥无法解密或版本不支持 |
-| 400 | 许可证已过期 |
+| 状态码 | 场景 | message key |
+|--------|------|-------------|
+| 400 | `licenseKey` 为空 | `error.license.key_required` |
+| 400 | 密钥无法解密或版本不支持 | `error.license.*`（具体见 [i18n-keys.md](../i18n-keys.md)） |
+| 400 | 许可证已过期 | `error.license.expired`（含 `params.expiresAt`） |

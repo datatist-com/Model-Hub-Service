@@ -22,7 +22,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.logs.login_list.success",
   "data": {
     "items": [
       {
@@ -66,14 +66,14 @@
 
 #### 响应 `200`
 
-格式同 `/logs/login/mine`。
+格式同 `/logs/login/mine`，`message` 为 `message.logs.login_list.success`。
 
 #### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 401 | 未认证 |
-| 403 | 非管理员 |
+| 状态码 | 场景 | message key |
+|--------|------|-------------|
+| 401 | 未认证 | `error.auth.token_invalid` |
+| 403 | 非管理员 | `error.auth.admin_required` |
 
 ---
 
@@ -99,7 +99,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.logs.operation_list.success",
   "data": {
     "items": [
       {
@@ -161,11 +161,11 @@ JSON 字符串，格式为 `{"i18n_key": "...", "params": {...}}`，供前端国
 
 #### 响应 `200`
 
-格式同 `/logs/operations/mine`。
+格式同 `/logs/operations/mine`，`message` 为 `message.logs.operation_list.success`。
 
 #### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 401 | 未认证 |
-| 403 | 非管理员 |
+| 状态码 | 场景 | message key |
+|--------|------|-------------|
+| 401 | 未认证 | `error.auth.token_invalid` |
+| 403 | 非管理员 | `error.auth.admin_required` |

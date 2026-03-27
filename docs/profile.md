@@ -27,7 +27,7 @@
 ```json
 {
   "code": "OK",
-  "message": "success",
+  "message": "message.profile.change_password.success",
   "data": {
     "success": true
   }
@@ -36,8 +36,8 @@
 
 ### 错误
 
-| 状态码 | 场景 |
-|--------|------|
-| 400 | 新密码少于 6 位 |
-| 401 | 未认证 / 当前密码错误 |
-| 404 | 用户不存在 |
+| 状态码 | message key | 场景 |
+|--------|-------------|------|
+| 400 | `error.profile.password_too_short` | 新密码少于 6 位 |
+| 401 | `error.auth.invalid_credentials` | 当前密码错误 |
+| 404 | `error.users.not_found` | 用户不存在 |

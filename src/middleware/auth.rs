@@ -57,7 +57,7 @@ fn extract_token_str(req: &HttpRequest) -> Result<String, AppError> {
     }
 
     Err(AppError::Unauthorized(
-        "Missing token: provide Authorization header, X-Token header, or ?token= query param"
+        "error.auth.missing_token"
             .into(),
     ))
 }
@@ -73,15 +73,15 @@ impl FromRequest for Claims {
 
         Box::pin(async move {
             let pool =
-                pool.ok_or_else(|| AppError::Internal("Missing DB pool".into()))?;
+                pool.ok_or_else(|| AppError::Internal("error.internal".into()))?;
             let token_str = token_result?;
 
             let info = token_model::find_active(&pool, &token_str)
                 .await?
-                .ok_or_else(|| AppError::Unauthorized("Token is invalid or expired".into()))?;
+                .ok_or_else(|| AppError::Unauthorized("error.auth.token_invalid".into()))?;
 
             if info.user_status != "active" {
-                return Err(AppError::Forbidden("Account is frozen".into()));
+                return Err(AppError::Forbidden("error.auth.account_frozen".into()));
             }
 
             Ok(Claims {
@@ -106,7 +106,7 @@ impl FromRequest for AdminOnly {
         Box::pin(async move {
             match fut.await {
                 Ok(claims) if claims.role == "platform_admin" => Ok(AdminOnly(claims)),
-                Ok(_) => Err(AppError::Forbidden("Admin access required".into())),
+                Ok(_) => Err(AppError::Forbidden("error.auth.admin_required".into())),
                 Err(e) => Err(e),
             }
         })

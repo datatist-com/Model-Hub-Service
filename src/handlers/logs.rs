@@ -26,7 +26,7 @@ pub async fn my_login_logs(
         page,
         page_size,
         total: result.total,
-    }))
+    }, "message.logs.login_list.success"))
 }
 
 /// GET /api/v1/logs/login
@@ -47,7 +47,7 @@ pub async fn all_login_logs(
         page,
         page_size,
         total: result.total,
-    }))
+    }, "message.logs.login_list.success"))
 }
 
 // ─── Operation Logs ───
@@ -70,7 +70,7 @@ pub async fn my_operation_logs(
         page,
         page_size,
         total: result.total,
-    }))
+    }, "message.logs.operation_list.success"))
 }
 
 /// GET /api/v1/logs/operations
@@ -91,5 +91,5 @@ pub async fn all_operation_logs(
         page,
         page_size,
         total: result.total,
-    }))
+    }, "message.logs.operation_list.success"))
 }

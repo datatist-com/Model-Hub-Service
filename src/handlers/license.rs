@@ -42,7 +42,7 @@ pub async fn verify(
 ) -> Result<HttpResponse, AppError> {
     let token = body.license_key.trim().to_string();
     if token.is_empty() {
-        return Err(AppError::BadRequest("licenseKey is required".into()));
+        return Err(AppError::BadRequest("error.license.key_required".into()));
     }
 
     let decoded = license_model::decrypt(&token)?;
@@ -53,7 +53,7 @@ pub async fn verify(
         expired,
         project_name: decoded.project_name,
         expires_at: decoded.expires_at,
-    }))
+    }, "message.license.verify.success"))
 }
 
 /// POST /api/v1/license/activate
@@ -65,15 +65,15 @@ pub async fn activate(
 ) -> Result<HttpResponse, AppError> {
     let token = body.license_key.trim().to_string();
     if token.is_empty() {
-        return Err(AppError::BadRequest("licenseKey is required".into()));
+        return Err(AppError::BadRequest("error.license.key_required".into()));
     }
 
     let decoded = license_model::decrypt(&token)?;
 
     if !license_model::is_valid(&decoded.expires_at) {
-        return Err(AppError::BadRequest(format!(
-            "license has already expired ({})",
-            decoded.expires_at
+        return Err(AppError::BadRequest(crate::errors::I18nMsg::with_params(
+            "error.license.expired",
+            serde_json::json!({"expiresAt": decoded.expires_at}),
         )));
     }
 
@@ -85,7 +85,7 @@ pub async fn activate(
     )
     .await?;
 
-    Ok(ApiResponse::ok(to_info(&row)))
+    Ok(ApiResponse::ok(to_info(&row), "message.license.activate.success"))
 }
 
 /// GET /api/v1/license
@@ -95,14 +95,14 @@ pub async fn info(
     pool: web::Data<SqlitePool>,
 ) -> Result<HttpResponse, AppError> {
     match license_model::find_active(&pool).await? {
-        Some(row) => Ok(ApiResponse::ok(to_info(&row))),
+        Some(row) => Ok(ApiResponse::ok(to_info(&row), "message.license.info.success")),
         None => Ok(ApiResponse::ok(LicenseInfo {
             status: "missing",
             project_name: String::new(),
             license_key_masked: String::new(),
             expires_at: String::new(),
             activated_at: String::new(),
-        })),
+        }, "message.license.info.success")),
     }
 }
 

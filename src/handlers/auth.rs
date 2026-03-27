@@ -40,7 +40,7 @@ pub async fn login(
     let body = body.into_inner();
 
     if body.username.is_empty() || body.password.is_empty() {
-        return Err(AppError::BadRequest("Username and password required".into()));
+        return Err(AppError::BadRequest("error.auth.credentials_required".into()));
     }
 
     let ip = token_model::extract_ip(&req);
@@ -58,7 +58,7 @@ pub async fn login(
                 &pool, "unknown", &body.username, Some(&ip), Some(&device),
                 "failed",
             ).await;
-            return Err(AppError::Unauthorized("Invalid credentials".into()));
+            return Err(AppError::Unauthorized("error.auth.invalid_credentials".into()));
         }
     };
 
@@ -67,7 +67,7 @@ pub async fn login(
             &pool, &db_user.id, &db_user.username, Some(&ip), Some(&device),
             "failed",
         ).await;
-        return Err(AppError::Forbidden("Account is frozen".into()));
+        return Err(AppError::Forbidden("error.auth.account_frozen".into()));
     }
 
     if let Err(e) = verify_password(&body.password, &db_user.password_hash) {
@@ -87,17 +87,17 @@ pub async fn login(
         "success",
     ).await;
 
-    Ok(ApiResponse::ok(LoginData {
+    Ok(ApiResponse::ok_params(LoginData {
         access_token: raw_token,
         user: UserInfo {
-            id: db_user.id,
-            username: db_user.username,
+            id: db_user.id.clone(),
+            username: db_user.username.clone(),
             real_name: db_user.real_name,
             role: db_user.role,
             language: db_user.language,
             ui_theme: db_user.ui_theme,
         },
-    }))
+    }, "message.auth.login.success", serde_json::json!({"username": &db_user.username})))
 }
 
 /// POST /api/v1/auth/logout — revoke the current token in DB.
@@ -118,7 +118,7 @@ pub async fn logout(
         None, Some(&detail), Some(&ip),
     ).await;
 
-    Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
+    Ok(ApiResponse::ok(serde_json::json!({ "success": true }), "message.auth.logout.success"))
 }
 
 /// GET /api/v1/auth/token
@@ -132,7 +132,7 @@ pub async fn token_info(
 
     let db_user = user::find_by_id(&pool, &claims.sub)
         .await?
-        .ok_or_else(|| AppError::NotFound("User not found".into()))?;
+        .ok_or_else(|| AppError::NotFound("error.users.not_found".into()))?;
 
     Ok(ApiResponse::ok(LoginData {
         access_token: claims.token,
@@ -144,7 +144,7 @@ pub async fn token_info(
             language: db_user.language,
             ui_theme: db_user.ui_theme,
         },
-    }))
+    }, "message.auth.token.success"))
 }
 
 // ── password helpers ──
@@ -152,10 +152,10 @@ pub async fn token_info(
 pub fn verify_password(password: &str, hash: &str) -> Result<(), AppError> {
     use argon2::{Argon2, PasswordHash, PasswordVerifier};
     let parsed = PasswordHash::new(hash)
-        .map_err(|_| AppError::Internal("Corrupted password hash".into()))?;
+        .map_err(|_| AppError::Internal("error.internal.password_hash_corrupted".into()))?;
     Argon2::default()
         .verify_password(password.as_bytes(), &parsed)
-        .map_err(|_| AppError::Unauthorized("Invalid credentials".into()))
+        .map_err(|_| AppError::Unauthorized("error.auth.invalid_credentials".into()))
 }
 
 pub fn hash_password(password: &str) -> Result<String, AppError> {
@@ -165,5 +165,5 @@ pub fn hash_password(password: &str) -> Result<String, AppError> {
     Argon2::default()
         .hash_password(password.as_bytes(), &salt)
         .map(|h| h.to_string())
-        .map_err(|e| AppError::Internal(format!("Password hashing failed: {e}")))
+        .map_err(|e| { tracing::error!("Password hashing failed: {e}"); AppError::Internal("error.internal.password_hash_failed".into()) })
 }

@@ -30,7 +30,7 @@ pub async fn list(
         page,
         page_size,
         total: result.total,
-    }))
+    }, "message.users.list.success"))
 }
 
 /// POST /api/v1/users
@@ -43,10 +43,10 @@ pub async fn create(
     let r = body.into_inner();
 
     if r.username.trim().is_empty() || r.password.is_empty() {
-        return Err(AppError::BadRequest("Username and password required".into()));
+        return Err(AppError::BadRequest("error.auth.credentials_required".into()));
     }
     if r.password.len() < 6 {
-        return Err(AppError::BadRequest("Password must be at least 6 characters".into()));
+        return Err(AppError::BadRequest("error.users.password_too_short".into()));
     }
     validate_role(&r.role).map_err(AppError::BadRequest)?;
 
@@ -71,7 +71,9 @@ pub async fn create(
         Some(&user.id), Some(&detail), Some(&ip),
     ).await;
 
-    Ok(ApiResponse::ok(UserView::from(user)))
+    let username = user.username.clone();
+    Ok(ApiResponse::ok_params(UserView::from(user), "message.users.create.success",
+        serde_json::json!({"username": &username})))
 }
 
 /// PUT /api/v1/users/{id}
@@ -111,7 +113,9 @@ pub async fn update(
         Some(&id), Some(&detail), Some(&ip),
     ).await;
 
-    Ok(ApiResponse::ok(UserView::from(user)))
+    let username = user.username.clone();
+    Ok(ApiResponse::ok_params(UserView::from(user), "message.users.update.success",
+        serde_json::json!({"username": &username})))
 }
 
 /// DELETE /api/v1/users/{id}
@@ -125,7 +129,7 @@ pub async fn delete(
 
     // Prevent self-deletion
     if id == admin.0.sub {
-        return Err(AppError::BadRequest("Cannot delete yourself".into()));
+        return Err(AppError::BadRequest("error.users.cannot_delete_self".into()));
     }
 
     // Fetch user info before deletion for logging
@@ -144,5 +148,5 @@ pub async fn delete(
         Some(&id), Some(&detail), Some(&ip),
     ).await;
 
-    Ok(ApiResponse::ok(serde_json::json!({ "success": true })))
+    Ok(ApiResponse::ok(serde_json::json!({ "success": true }), "message.users.delete.success"))
 }

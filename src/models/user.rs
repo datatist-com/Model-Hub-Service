@@ -75,19 +75,25 @@ pub struct UpdateUserRequest {
 const VALID_ROLES: &[&str] = &["model_developer", "model_operator", "platform_admin"];
 const VALID_STATUSES: &[&str] = &["active", "frozen"];
 
-pub fn validate_role(role: &str) -> Result<(), String> {
+pub fn validate_role(role: &str) -> Result<(), crate::errors::I18nMsg> {
     if VALID_ROLES.contains(&role) {
         Ok(())
     } else {
-        Err(format!("Invalid role: {role}"))
+        Err(crate::errors::I18nMsg::with_params(
+            "error.users.invalid_role",
+            serde_json::json!({"role": role}),
+        ))
     }
 }
 
-pub fn validate_status(status: &str) -> Result<(), String> {
+pub fn validate_status(status: &str) -> Result<(), crate::errors::I18nMsg> {
     if VALID_STATUSES.contains(&status) {
         Ok(())
     } else {
-        Err(format!("Invalid status: {status}"))
+        Err(crate::errors::I18nMsg::with_params(
+            "error.users.invalid_status",
+            serde_json::json!({"status": status}),
+        ))
     }
 }
 
