@@ -104,6 +104,37 @@
 
 ---
 
+## 枚举字段翻译 Key
+
+前端展示日志列表时，`module`、`action`、`result` 等枚举字段需要翻译为可读文本。
+
+### 操作日志 — module
+
+| 原始值 | i18n_key | 说明 |
+|--------|----------|------|
+| `auth` | `enum.module.auth` | 认证相关 |
+| `users` | `enum.module.users` | 用户管理 |
+| `profile` | `enum.module.profile` | 个人设置 |
+
+### 操作日志 — action
+
+| 原始值 | i18n_key | 说明 |
+|--------|----------|------|
+| `logout` | `enum.action.logout` | 登出 |
+| `create_user` | `enum.action.create_user` | 创建用户 |
+| `update_user` | `enum.action.update_user` | 更新用户 |
+| `delete_user` | `enum.action.delete_user` | 删除用户 |
+| `change_password` | `enum.action.change_password` | 修改密码 |
+
+### 登录日志 — result
+
+| 原始值 | i18n_key | 说明 |
+|--------|----------|------|
+| `success` | `enum.result.success` | 登录成功 |
+| `failed` | `enum.result.failed` | 登录失败 |
+
+---
+
 ## 操作日志 detail Key
 
 操作日志 `detail` 字段存储 JSON 格式的国际化信息：`{"i18n_key": "...", "params": {...}}`
@@ -172,6 +203,18 @@ const zhCN: Record<string, string> = {
   "operation.users.update_user": "更新用户 {username}",
   "operation.users.delete_user": "删除用户 {username}",
   "operation.profile.change_password": "修改密码",
+
+  // 枚举字段
+  "enum.module.auth": "认证",
+  "enum.module.users": "用户管理",
+  "enum.module.profile": "个人设置",
+  "enum.action.logout": "登出",
+  "enum.action.create_user": "创建用户",
+  "enum.action.update_user": "更新用户",
+  "enum.action.delete_user": "删除用户",
+  "enum.action.change_password": "修改密码",
+  "enum.result.success": "成功",
+  "enum.result.failed": "失败",
 };
 
 // 英文翻译模板
@@ -225,6 +268,18 @@ const enUS: Record<string, string> = {
   "operation.users.update_user": "Updated user {username}",
   "operation.users.delete_user": "Deleted user {username}",
   "operation.profile.change_password": "Changed password",
+
+  // Enum fields
+  "enum.module.auth": "Auth",
+  "enum.module.users": "Users",
+  "enum.module.profile": "Profile",
+  "enum.action.logout": "Logout",
+  "enum.action.create_user": "Create User",
+  "enum.action.update_user": "Update User",
+  "enum.action.delete_user": "Delete User",
+  "enum.action.change_password": "Change Password",
+  "enum.result.success": "Success",
+  "enum.result.failed": "Failed",
 };
 
 // 渲染函数
